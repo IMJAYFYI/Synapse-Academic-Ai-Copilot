@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  # 1. Our Relational Database (For Users, Schedules, and Chat History)
+  postgres:
+    image: postgres:15-alpine
+    container_name: synapse_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: rootpassword
+      POSTGRES_DB: synapse_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. Our Vector Database (For AI RAG Memory later)
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: synapse_chroma
+    ports:
+      # Mapped to 8001 so it doesn't fight with our FastAPI server on 8000
+      - "8001:8000" 
+    volumes:
+      - chroma_data:/chroma/chroma
+
+volumes:
+  postgres_data:
+  chroma_data:
