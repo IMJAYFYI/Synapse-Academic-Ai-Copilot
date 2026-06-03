@@ -9,35 +9,60 @@ export function StudyProvider({ children }) {
     return savedUser ? JSON.parse(savedUser) : null;
   });
   
-  const [isAuthenticated, setIsAuthenticated] = useState(!!user);
+  const [token, setToken] = useState(() => sessionStorage.getItem('synapse_token') || null);
   
-  const [syllabusData, setSyllabusData] = useState(() => {
-    const saved = localStorage.getItem('synapse_syllabus');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(!!user && !!token);
   
-  const [globalUnitData, setGlobalUnitData] = useState(() => {
-    const saved = localStorage.getItem('synapse_units');
-    return saved ? JSON.parse(saved) : {};
-  });
+  const authFetch = async (url, options = {}) => {
+    const headers = {
+      ...options.headers,
+      'Authorization': `Bearer ${sessionStorage.getItem('synapse_token')}`
+    };
+    try {
+      const response = await fetch(url, { ...options, headers });
+      if (response.status === 401) {
+        logout();
+        window.location.href = '/login';
+      }
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
   
-  const [globalChatHistory, setGlobalChatHistory] = useState(() => {
-    const saved = localStorage.getItem('synapse_chats');
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [syllabusData, setSyllabusData] = useState(null);
+  
+  const [globalUnitData, setGlobalUnitData] = useState({});
+  
+  const [globalChatHistory, setGlobalChatHistory] = useState({});
 
   const [globalQuizHistory, setGlobalQuizHistory] = useState([]);
+  
+  const [theme, setTheme] = useState('dark');
+  const [reminderTime, setReminderTime] = useState('18:00');
+  const [globalActiveTopic, setGlobalActiveTopic] = useState("General Study");
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    // Theme is saved to DB via API calls in Topbar, not here.
+  }, [theme]);
 
   // FIX 2: Sync to localStorage
   useEffect(() => {
-    if (user) {
+    if (user && token) {
       sessionStorage.setItem('synapse_user', JSON.stringify(user));
+      sessionStorage.setItem('synapse_token', token);
       setIsAuthenticated(true);
       
       // Sync state from backend
       const syncState = async () => {
         try {
-          const response = await fetch(`http://localhost:8000/api/sync-user-state/${user.id}`);
+          const response = await authFetch(`http://localhost:8000/api/sync-user-state/${user.id}`);
           if (response.ok) {
             const data = await response.json();
             if (data.syllabus_data) {
@@ -46,11 +71,17 @@ export function StudyProvider({ children }) {
             if (data.units_data && Object.keys(data.units_data).length > 0) {
               setGlobalUnitData(data.units_data);
             }
-            if (data.last_active_topic) {
-              localStorage.setItem("synapse_active_topic", data.last_active_topic);
-            }
             if (data.quiz_results) {
               setGlobalQuizHistory(data.quiz_results);
+            }
+            if (data.theme) {
+              setTheme(data.theme);
+            }
+            if (data.reminder_time) {
+              setReminderTime(data.reminder_time);
+            }
+            if (data.last_active_topic) {
+              setGlobalActiveTopic(data.last_active_topic);
             }
           }
         } catch (error) {
@@ -64,42 +95,40 @@ export function StudyProvider({ children }) {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (syllabusData) localStorage.setItem('synapse_syllabus', JSON.stringify(syllabusData));
-    else localStorage.removeItem('synapse_syllabus');
-  }, [syllabusData]);
-
-  useEffect(() => {
-    localStorage.setItem('synapse_units', JSON.stringify(globalUnitData));
-  }, [globalUnitData]);
-
-  useEffect(() => {
-    localStorage.setItem('synapse_chats', JSON.stringify(globalChatHistory));
-  }, [globalChatHistory]);
+  // Removed localStorage sync effects
 
   // FIX 3: Master logout function that completely destroys the session
   const logout = () => {
     setUser(null);
+    setToken(null);
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('synapse_user');
+    sessionStorage.removeItem('synapse_token');
+    
+    // Clear global state
     setSyllabusData(null);
     setGlobalUnitData({});
     setGlobalChatHistory({});
-    sessionStorage.removeItem('synapse_user'); // Hard wipe auth
-    localStorage.removeItem('synapse_syllabus');
-    localStorage.removeItem('synapse_units');
-    localStorage.removeItem('synapse_chats');
-    localStorage.removeItem('synapse_active_topic');
     setGlobalQuizHistory([]);
+    setTheme('dark');
   };
 
   return (
     <StudyContext.Provider value={{ 
-      user, setUser, 
-      isAuthenticated, setIsAuthenticated,
+      user, 
+      setUser,
+      token,
+      setToken,
+      isAuthenticated,
+      authFetch,
       logout,
       syllabusData, setSyllabusData,
       globalUnitData, setGlobalUnitData,
       globalChatHistory, setGlobalChatHistory,
-      globalQuizHistory, setGlobalQuizHistory
+      globalQuizHistory, setGlobalQuizHistory,
+      theme, setTheme,
+      reminderTime, setReminderTime,
+      globalActiveTopic, setGlobalActiveTopic
     }}>
       {children}
     </StudyContext.Provider>

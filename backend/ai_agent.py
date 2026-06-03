@@ -46,7 +46,7 @@ def analyze_syllabus(raw_text: str) -> str:
 # --- MICRO EXTRACTION LOGIC (Just-In-Time Phase) ---
 
 class UnitDetail(BaseModel):
-    unit_name: str = Field(description="The name or number of the unit (e.g., Unit I, Unit II)")
+    unit_name: str = Field(description="The structured name of the unit. You MUST prepend it with 'Unit X:' where X is the unit number (e.g., 'Unit 1: Algorithm and algorithm development')")
     key_concepts: List[str] = Field(description="A list of 3 to 5 specific concepts covered in this unit")
 
 class SubjectDetails(BaseModel):
@@ -66,7 +66,8 @@ def extract_subject_details(raw_text: str, subject_name: str) -> str:
         "You are an expert academic data extraction system.\n"
         "Analyze the following raw syllabus text.\n"
         "Locate the specific subject named: '{subject}'.\n"
-        "Extract the detailed unit-by-unit breakdown (Units and key concepts) strictly for this subject ONLY.\n\n"
+        "Extract the detailed unit-by-unit breakdown (Units and key concepts) strictly for this subject ONLY.\n"
+        "CRITICAL: Ensure every unit_name strictly follows the format 'Unit X: [Name]', where X is the sequential unit number.\n\n"
         "Raw Syllabus Text:\n{text}"
     )
 
@@ -88,7 +89,8 @@ def chat_with_coach(user_message: str, chat_history: list, active_topic: str) ->
         SystemMessage(
             content=f"You are an expert AI Study Coach. The student is currently studying: [{active_topic}]. "
                     f"Keep answers highly technical, concise, and strictly related to the subject matter. "
-                    f"Provide code examples or mathematical formulas where necessary. Do not use analogies."
+                    f"Provide code examples or mathematical formulas where necessary. Do not use analogies. "
+                    f"CRITICAL: If you generate a Markdown table and need to include the pipe character '|' inside a cell (like Bitwise OR or Logical OR), you MUST use the HTML entity '&#124;' instead of the raw character, otherwise it will break the table formatting."
         )
     ]
 
@@ -106,8 +108,72 @@ def chat_with_coach(user_message: str, chat_history: list, active_topic: str) ->
 
     # 4. Execute the chain
     response = llm.invoke(messages)
-    
     return response.content
+
+from langchain_community.vectorstores import Chroma
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+def ingest_syllabus_to_vectorstore(text: str, syllabus_id: int):
+    """Chunks the raw syllabus text and stores it in ChromaDB for RAG."""
+    if not text.strip():
+        return
+    
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=os.getenv("GEMINI_API_KEY"))
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    splits = text_splitter.split_text(text)
+    
+    if not splits:
+        return
+        
+    vectorstore = Chroma(persist_directory="./.chroma_db", embedding_function=embeddings)
+    metadatas = [{"syllabus_id": syllabus_id}] * len(splits)
+    vectorstore.add_texts(texts=splits, metadatas=metadatas)
+
+def chat_with_coach_stream(user_message: str, chat_history: list, active_topic: str):
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash", 
+        temperature=0.3, 
+        google_api_key=os.getenv("GEMINI_API_KEY")
+    )
+    
+    # RAG Retrieval
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=os.getenv("GEMINI_API_KEY"))
+    vectorstore = Chroma(persist_directory="./.chroma_db", embedding_function=embeddings)
+    
+    # Try to retrieve context based on the topic and message
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+    try:
+        docs = retriever.invoke(f"{active_topic} {user_message}")
+        rag_context = "\n\n".join([d.page_content for d in docs])
+    except:
+        rag_context = "No additional textbook context found."
+    
+    messages = [
+        SystemMessage(
+            content=f"You are an expert AI Study Coach. The student is currently studying: [{active_topic}].\n\n"
+                    f"Use the following retrieved context from their syllabus/textbook to answer accurately. "
+                    f"If the context doesn't contain the answer, you can use your own knowledge, but prioritize the provided text.\n\n"
+                    f"--- RETRIEVED CONTEXT ---\n{rag_context}\n------------------------\n\n"
+                    f"Keep answers highly technical, concise, and strictly related to the subject matter. "
+                    f"Provide code examples or mathematical formulas where necessary. Do not use analogies. "
+                    f"CRITICAL: If you generate a Markdown table and need to include the pipe character '|' inside a cell, you MUST use the HTML entity '&#124;' instead."
+        )
+    ]
+    
+    for msg in chat_history[-10:]:
+        if msg["sender"] == "user":
+            messages.append(HumanMessage(content=msg["text"]))
+        elif msg["sender"] == "ai":
+            if "✅" not in msg["text"] and "❌" not in msg["text"]:
+                messages.append(AIMessage(content=msg["text"]))
+
+    messages.append(HumanMessage(content=user_message))
+
+    for chunk in llm.stream(messages):
+        if chunk.content:
+            yield chunk.content
+
 
 # --- PYDANTIC MODELS FOR NOTES ---
 class Definition(BaseModel):

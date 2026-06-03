@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { Play, Pause, RotateCcw, Send, CheckCircle2, Brain, Coffee, MoreVertical, Maximize2, Minimize2, Zap, Loader2, FileText, GraduationCap, RefreshCw, CheckCircle, XCircle, Lightbulb, BookOpen, ArrowRight } from "lucide-react";
+import { Play, Pause, RotateCcw, Send, CheckCircle2, Brain, Maximize2, Minimize2, Loader2, FileText, GraduationCap, RefreshCw, Lightbulb, ArrowRight } from "lucide-react";
 import { useStudyContext } from "../context/StudyContext";
 import { useLocation } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ErrorBoundary } from "../components/ErrorBoundary";
 
 export default function StudySession() {
@@ -15,24 +18,25 @@ export default function StudySession() {
 }
 
 function StudySessionContent() {
-  const { user, syllabusData, globalUnitData, globalQuizHistory } = useStudyContext();
+  const { user, syllabusData, globalUnitData, globalQuizHistory, globalActiveTopic, setGlobalActiveTopic, authFetch } = useStudyContext();
   const location = useLocation();
 
-  const [activeTopic, setActiveTopic] = useState(() => {
-    return location.state?.selectedTopic 
-      || localStorage.getItem("synapse_active_topic")
-      || syllabusData?.topics?.[0]?.title 
-      || "General Study";
-  });
+  useEffect(() => {
+    if (location.state?.selectedTopic) {
+      setGlobalActiveTopic(location.state.selectedTopic);
+    }
+  }, [location.state?.selectedTopic, setGlobalActiveTopic]);
+
+  const activeTopic = globalActiveTopic || "General Study";
+  const setActiveTopic = setGlobalActiveTopic;
   const [fullscreenPanel, setFullscreenPanel] = useState(null);
 
   const topicQuizHistory = globalQuizHistory?.filter(q => q.topic === activeTopic) || [];
   const durations = { work: 25 * 60, short: 5 * 60, long: 15 * 60, test: 5 };
 
   useEffect(() => {
-    localStorage.setItem("synapse_active_topic", activeTopic);
     if (user?.id) {
-      fetch("http://localhost:8000/api/update-active-topic", {
+      authFetch("http://localhost:8000/api/update-active-topic", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, active_topic: activeTopic })
@@ -73,15 +77,30 @@ function StudySessionContent() {
   const [chatMessages, setChatMessages] = useState([defaultMsg]);
   const hasStartedLesson = chatMessages?.length > 1;
 
+  const scrollTimeoutRef = useRef(null);
+
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (!scrollTimeoutRef.current) {
+      scrollTimeoutRef.current = setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        scrollTimeoutRef.current = null;
+      }, 100);
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+        scrollTimeoutRef.current = null;
+      }
+    };
   }, [chatMessages]);
 
   useEffect(() => {
     if (!user?.id) return; 
     const fetchHistory = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/api/chat/history/${user.id}/${encodeURIComponent(activeTopic)}`);
+        const response = await authFetch(`http://localhost:8000/api/chat/history/${user.id}/${encodeURIComponent(activeTopic)}`);
         if (response.ok) {
           const data = await response.json();
           if (data.history && data.history.length > 0) {
@@ -101,7 +120,7 @@ function StudySessionContent() {
     if (!user?.id) return;
     const fetchNotes = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/api/notes/${user.id}/${encodeURIComponent(activeTopic)}`);
+        const response = await authFetch(`http://localhost:8000/api/notes/${user.id}/${encodeURIComponent(activeTopic)}`);
         if (response.ok) {
           const data = await response.json();
           setNotes(data.notes);
@@ -132,13 +151,17 @@ function StudySessionContent() {
     // If it was a 'test', we still log 25 minutes as per user request
     const minutesToLog = mode === "test" ? 25 : durations.work / 60;
     try {
-      const response = await fetch("http://localhost:8000/api/record-session", {
+      const response = await authFetch("http://localhost:8000/api/record-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, topic_title: activeTopic, duration_minutes: minutesToLog }),
       });
-      if (!response.ok) throw new Error("Failed to save");
-      updateChatMessages(prev => [...prev, { sender: 'ai', text: `✅ Session complete! Logged ${minutesToLog} minutes of **${activeTopic}**.` }]);
+      const data = await response.json();
+      let alertMsg = `✅ Session complete! Logged ${minutesToLog} minutes of **${activeTopic}**.`;
+      if (data.new_badges && data.new_badges.length > 0) {
+        alertMsg += `\n\n🏆 **Congratulations!** You just unlocked new badges: ${data.new_badges.join(", ")}`;
+      }
+      updateChatMessages(prev => [...prev, { sender: 'ai', text: alertMsg }]);
     } catch (error) {
       updateChatMessages(prev => [...prev, { sender: 'ai', text: `❌ Error: Failed to save session.` }]);
     } finally {
@@ -197,7 +220,7 @@ function StudySessionContent() {
     updateChatMessages(prev => [...prev, { sender: 'user', text: userText }]);
 
     try {
-      const response = await fetch(`http://localhost:8000/api/chat`, {
+      const response = await authFetch(`http://localhost:8000/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -210,8 +233,42 @@ function StudySessionContent() {
       });
 
       if (!response.ok) throw new Error("Failed to communicate");
-      const data = await response.json();
-      updateChatMessages(prev => [...prev, { sender: 'ai', text: data.reply }]);
+      
+      updateChatMessages(prev => [...prev, { sender: 'ai', text: "" }]);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        const chunkString = decoder.decode(value, { stream: true });
+        const lines = chunkString.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6);
+            if (!dataStr.trim()) continue;
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.chunk) {
+                updateChatMessages(prev => {
+                  const newMsgs = [...prev];
+                  newMsgs[newMsgs.length - 1] = { 
+                    ...newMsgs[newMsgs.length - 1], 
+                    text: newMsgs[newMsgs.length - 1].text + parsed.chunk 
+                  };
+                  return newMsgs;
+                });
+              }
+            } catch (e) {
+              console.error("Error parsing SSE JSON", e);
+            }
+          }
+        }
+      }
+
     } catch (error) {
       updateChatMessages(prev => [...prev, { sender: 'ai', text: "❌ Connection error." }]);
     } finally {
@@ -243,7 +300,7 @@ function StudySessionContent() {
     if (!user?.id) return;
     setIsGeneratingNotes(true);
     try {
-      const response = await fetch("http://localhost:8000/api/notes/generate", {
+      const response = await authFetch("http://localhost:8000/api/notes/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, topic: activeTopic })
@@ -269,7 +326,7 @@ function StudySessionContent() {
     try {
       // Modify topic to include unit target if specified
       const finalTopic = quizTargetUnit === "Full Topic" ? activeTopic : `${activeTopic} - ${quizTargetUnit}`;
-      const response = await fetch("http://localhost:8000/api/quiz/generate", {
+      const response = await authFetch("http://localhost:8000/api/quiz/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -308,7 +365,7 @@ function StudySessionContent() {
     }, 0);
 
     try {
-      await fetch("http://localhost:8000/api/quiz/submit", {
+      await authFetch("http://localhost:8000/api/quiz/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -334,16 +391,16 @@ function StudySessionContent() {
 
   return (
     <div className={`flex-1 flex flex-col p-6 relative min-h-0 ${fullscreenPanel ? 'z-[100]' : 'z-10'}`}>
-      <div className="flex flex-col gap-5 mb-6 bg-white/70 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white p-5 shrink-0">
+      <div className="flex flex-col gap-5 mb-6 bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white dark:border-slate-700 p-5 shrink-0 transition-colors duration-300">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight mb-2 text-gray-900">Study Session</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight mb-2 text-gray-900 dark:text-white transition-colors duration-300">Study Session</h1>
             <div className="flex items-center gap-3">
-              <span className="text-gray-500 font-medium text-sm">Currently studying:</span>
+              <span className="text-gray-500 dark:text-gray-400 font-medium text-sm transition-colors duration-300">Currently studying:</span>
               <select 
                 value={activeTopic}
                 onChange={(e) => setActiveTopic(e.target.value)}
-                className="bg-white border border-gray-100 rounded-lg py-1.5 px-3 text-sm font-bold text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer"
+                className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg py-1.5 px-3 text-sm font-bold text-indigo-600 dark:text-indigo-400 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer transition-colors duration-300"
               >
                 {Array.isArray(syllabusData?.topics) && syllabusData.topics.map((topic, i) => (
                   <option key={i} value={topic?.title || `Topic ${i}`}>{topic?.title || `Topic ${i}`}</option>
@@ -353,14 +410,14 @@ function StudySessionContent() {
           </div>
           
           <div className="flex items-center gap-6">
-            <div className="flex bg-white/50 rounded-xl p-1 shadow-sm border border-white gap-1">
-              <button onClick={() => switchMode("work")} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${mode === "work" ? "bg-indigo-600 text-white shadow-md" : "text-gray-600 hover:bg-gray-50"}`}>Pomodoro</button>
-              <button onClick={() => switchMode("short")} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${mode === "short" ? "bg-emerald-500 text-white shadow-md" : "text-gray-600 hover:bg-gray-50"}`}>Short Break</button>
-              <button onClick={() => switchMode("long")} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${mode === "long" ? "bg-violet-500 text-white shadow-md" : "text-gray-600 hover:bg-gray-50"}`}>Long Break</button>
-              <button onClick={() => switchMode("test")} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${mode === "test" ? "bg-red-500 text-white shadow-md" : "text-gray-600 hover:bg-gray-50"}`}>Test (5s)</button>
+            <div className="flex bg-white/50 dark:bg-slate-800/50 rounded-xl p-1 shadow-sm border border-white dark:border-slate-700 gap-1 transition-colors duration-300">
+              <button onClick={() => switchMode("work")} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${mode === "work" ? "bg-indigo-600 text-white shadow-md" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700"}`}>Pomodoro</button>
+              <button onClick={() => switchMode("short")} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${mode === "short" ? "bg-emerald-500 text-white shadow-md" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700"}`}>Short Break</button>
+              <button onClick={() => switchMode("long")} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${mode === "long" ? "bg-violet-500 text-white shadow-md" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700"}`}>Long Break</button>
+              <button onClick={() => switchMode("test")} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${mode === "test" ? "bg-red-500 text-white shadow-md" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700"}`}>Test (5s)</button>
             </div>
 
-            <div className="flex items-center gap-4 bg-white/50 px-5 py-2 rounded-xl shadow-sm border border-white">
+            <div className="flex items-center gap-4 bg-white/50 dark:bg-slate-800/50 px-5 py-2 rounded-xl shadow-sm border border-white dark:border-slate-700 transition-colors duration-300">
               <div className={`text-3xl font-extrabold tracking-tighter bg-clip-text text-transparent transition-all duration-500 ${
                 mode === "work" ? "bg-gradient-to-r from-indigo-600 to-violet-600" :
                 (mode === "short" || mode === "long") ? "bg-gradient-to-r from-emerald-500 to-teal-500" :
@@ -377,7 +434,7 @@ function StudySessionContent() {
                 }`}>
                   {isRunning ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
                 </button>
-                <button onClick={resetTimer} className="p-2 rounded-full bg-white text-gray-600 hover:bg-gray-50 border border-gray-100 shadow-sm transition-transform transform hover:scale-105">
+                <button onClick={resetTimer} className="p-2 rounded-full bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 border border-gray-100 dark:border-slate-700 shadow-sm transition-transform transform hover:scale-105 transition-colors duration-300">
                   <RotateCcw size={18} />
                 </button>
               </div>
@@ -386,49 +443,49 @@ function StudySessionContent() {
         </div>
       </div>
 
-      <PanelGroup direction="horizontal" className="flex-1 min-h-0 overflow-hidden">
+      <PanelGroup direction="horizontal" className="flex-1 min-h-0 overflow-hidden px-1">
         
         {fullscreenPanel !== 'right' && (
         <Panel defaultSize={fullscreenPanel === 'left' ? 100 : 50} minSize={30}>
-          <div className={`flex flex-col bg-white/70 backdrop-blur-xl border border-white overflow-hidden ${
-            fullscreenPanel === 'left' ? 'fixed inset-0 z-[100] rounded-none bg-white/95 shadow-2xl' : 'h-full rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative'
+          <div className={`flex flex-col bg-white/80 dark:bg-[#1E293B]/80 backdrop-blur-2xl border border-white/60 dark:border-slate-700/50 overflow-hidden transition-colors duration-300 ${
+            fullscreenPanel === 'left' ? 'fixed inset-0 z-[100] rounded-none bg-white/95 dark:bg-slate-900/95 shadow-2xl' : 'h-full rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative'
           }`}>
             
             {/* Header Tabs */}
-            <div className="flex border-b border-gray-100/50 bg-white/40">
+            <div className="flex border-b border-gray-100/50 dark:border-slate-700/50 bg-white/40 dark:bg-slate-800/40 transition-colors duration-300">
               <button 
                 onClick={() => setActiveLeftTab("notes")}
-                className={`flex-1 font-semibold py-4 transition-colors ${activeLeftTab === "notes" ? "text-indigo-600 border-b-2 border-indigo-600 bg-white/50" : "text-gray-400 hover:text-gray-600"}`}
+                className={`flex-1 font-bold py-4 transition-colors ${activeLeftTab === "notes" ? "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 bg-white/60 dark:bg-slate-800/60" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-semibold"}`}
               >
-                <span className="flex items-center justify-center gap-2"><FileText size={16} /> Smart Notes</span>
+                <span className="flex items-center justify-center gap-2"><FileText size={18} /> Smart Notes</span>
               </button>
               <button 
                 onClick={() => setActiveLeftTab("quiz")}
-                className={`flex-1 font-semibold py-4 transition-colors ${activeLeftTab === "quiz" ? "text-indigo-600 border-b-2 border-indigo-600 bg-white/50" : "text-gray-400 hover:text-gray-600"}`}
+                className={`flex-1 font-bold py-4 transition-colors ${activeLeftTab === "quiz" ? "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 bg-white/60 dark:bg-slate-800/60" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 font-semibold"}`}
               >
-                <span className="flex items-center justify-center gap-2"><GraduationCap size={16} /> Quiz</span>
+                <span className="flex items-center justify-center gap-2"><GraduationCap size={18} /> Quiz</span>
               </button>
               <button 
                 onClick={() => setFullscreenPanel(prev => prev === 'left' ? null : 'left')}
-                className="px-4 text-gray-400 hover:text-indigo-600 transition-colors border-l border-gray-100/50"
+                className="px-5 text-gray-400 hover:text-indigo-600 transition-colors border-l border-gray-100/50"
                 title="Toggle Fullscreen"
               >
-                {fullscreenPanel === 'left' ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                {fullscreenPanel === 'left' ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
               </button>
             </div>
 
             {/* Tab Content */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
               {activeLeftTab === "notes" ? (
                 /* ===== SMART NOTES PANEL ===== */
                 <div>
                   <div className="flex justify-between items-start mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">{activeTopic}</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors duration-300">{activeTopic}</h2>
                     {notes && (
                       <button
                         onClick={handleGenerateNotes}
                         disabled={isGeneratingNotes}
-                        className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-white px-3 py-1.5 rounded-lg border border-indigo-100 shadow-sm transition-all hover:shadow-md disabled:opacity-50"
+                        className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-500/30 shadow-sm transition-all hover:shadow-md disabled:opacity-50"
                       >
                         <RefreshCw size={14} className={isGeneratingNotes ? "animate-spin" : ""} /> Refresh
                       </button>
@@ -466,17 +523,17 @@ function StudySessionContent() {
 
                   {notes && !isGeneratingNotes && (
                     <div className="space-y-6">
-                      <h3 className="text-lg font-bold text-indigo-700">{notes.title}</h3>
-                      <div className="bg-white/50 rounded-xl p-5 border border-white shadow-sm">
+                      <h3 className="text-lg font-bold text-indigo-700 dark:text-indigo-400 transition-colors duration-300">{notes.title}</h3>
+                      <div className="bg-white/50 dark:bg-slate-800/50 rounded-xl p-5 border border-white dark:border-slate-700 shadow-sm transition-colors duration-300">
                         <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">📝 Summary</h4>
-                        <p className="text-sm text-gray-700 leading-relaxed">{notes.summary}</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed transition-colors duration-300">{notes.summary}</p>
                       </div>
                       {Array.isArray(notes.key_points) && (
                         <div>
                           <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">🎯 Key Points</h4>
                           <ul className="space-y-2">
                             {notes.key_points.map((pt, i) => (
-                              <li key={i} className="flex items-start gap-3 text-sm text-gray-700">
+                              <li key={i} className="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
                                 <span className="mt-1.5 w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>{pt}
                               </li>
                             ))}
@@ -488,9 +545,9 @@ function StudySessionContent() {
                           <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">📖 Definitions</h4>
                           <div className="space-y-3">
                             {notes.definitions.map((def, i) => (
-                              <div key={i} className="bg-white/70 border border-white rounded-lg p-4 shadow-sm">
-                                <dt className="font-bold text-indigo-700 text-sm mb-1">{def?.term}</dt>
-                                <dd className="text-sm text-gray-600">{def?.definition}</dd>
+                              <div key={i} className="bg-white/70 dark:bg-slate-800/70 border border-white dark:border-slate-700 rounded-lg p-4 shadow-sm transition-colors duration-300">
+                                <dt className="font-bold text-indigo-700 dark:text-indigo-400 text-sm mb-1">{def?.term}</dt>
+                                <dd className="text-sm text-gray-600 dark:text-gray-400">{def?.definition}</dd>
                               </div>
                             ))}
                           </div>
@@ -508,16 +565,16 @@ function StudySessionContent() {
                         <GraduationCap size={28} className="text-indigo-400" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-gray-900 text-lg mb-1">Quiz: {activeTopic}</h3>
-                        <p className="text-sm text-gray-500">Test your knowledge with AI-generated questions</p>
+                        <h3 className="font-bold text-gray-900 dark:text-white text-lg mb-1 transition-colors duration-300">Quiz: {activeTopic}</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">Test your knowledge with AI-generated questions</p>
                       </div>
 
                       <div className="w-full">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 text-left">Target Scope</p>
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 text-left">Target Scope</p>
                         <select 
                           value={quizTargetUnit} 
                           onChange={(e) => setQuizTargetUnit(e.target.value)}
-                          className="w-full px-4 py-2 border border-white shadow-sm rounded-lg text-sm bg-white/50 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer text-gray-700"
+                          className="w-full px-4 py-2 border border-white dark:border-slate-700 shadow-sm rounded-lg text-sm bg-white/50 dark:bg-slate-800/50 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer text-gray-700 dark:text-gray-300 transition-colors duration-300"
                         >
                           <option value="Full Topic">Full Topic (Comprehensive)</option>
                           {globalUnitData && Array.isArray(globalUnitData[syllabusData?.topics?.findIndex(t => t.title === activeTopic)]) && globalUnitData[syllabusData?.topics?.findIndex(t => t.title === activeTopic)].map((u, i) => (
@@ -530,10 +587,10 @@ function StudySessionContent() {
 
                       <div className="w-full flex gap-4">
                         <div className="flex-1">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 text-left">Difficulty</p>
+                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 text-left">Difficulty</p>
                           <div className="flex gap-2">
                             {["easy", "medium", "hard"].map((d) => (
-                              <button key={d} onClick={() => setQuizDifficulty(d)} className={`flex-1 py-2 rounded-lg text-sm font-bold capitalize transition-all ${quizDifficulty === d ? "bg-indigo-600 text-white shadow-md" : "bg-white/50 text-gray-600 hover:bg-white/80 border border-white"}`}>
+                              <button key={d} onClick={() => setQuizDifficulty(d)} className={`flex-1 py-2 rounded-lg text-sm font-bold capitalize transition-all ${quizDifficulty === d ? "bg-indigo-600 text-white shadow-md" : "bg-white/50 dark:bg-slate-800/50 text-gray-600 dark:text-gray-400 hover:bg-white/80 dark:hover:bg-slate-700 border border-white dark:border-slate-700"}`}>
                                 {d}
                               </button>
                             ))}
@@ -541,10 +598,10 @@ function StudySessionContent() {
                         </div>
 
                         <div className="flex-1">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 text-left">Questions</p>
+                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 text-left">Questions</p>
                           <div className="flex gap-2">
                             {[5, 10].map((n) => (
-                              <button key={n} onClick={() => setQuizNumQuestions(n)} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${quizNumQuestions === n ? "bg-indigo-600 text-white shadow-md" : "bg-white/50 text-gray-600 hover:bg-white/80 border border-white"}`}>
+                              <button key={n} onClick={() => setQuizNumQuestions(n)} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${quizNumQuestions === n ? "bg-indigo-600 text-white shadow-md" : "bg-white/50 dark:bg-slate-800/50 text-gray-600 dark:text-gray-400 hover:bg-white/80 dark:hover:bg-slate-700 border border-white dark:border-slate-700"}`}>
                                 {n}
                               </button>
                             ))}
@@ -555,13 +612,13 @@ function StudySessionContent() {
                       {/* Past Quiz Results */}
                       {topicQuizHistory.length > 0 && (
                         <div className="w-full text-left mt-2">
-                          <h4 className="text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider flex items-center gap-2">
                             <CheckCircle2 size={16} className="text-emerald-500" /> Past Scores
                           </h4>
-                          <div className="space-y-2 max-h-32 overflow-y-auto">
+                          <div className="space-y-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
                             {topicQuizHistory.map((q, idx) => (
-                              <div key={idx} className="bg-white/50 border border-white p-2.5 rounded-lg flex justify-between items-center shadow-sm">
-                                <span className="text-sm text-gray-600 font-bold">Attempt {topicQuizHistory.length - idx}</span>
+                              <div key={idx} className="bg-white/50 dark:bg-slate-800/50 border border-white dark:border-slate-700 p-2.5 rounded-lg flex justify-between items-center shadow-sm transition-colors duration-300">
+                                <span className="text-sm text-gray-600 dark:text-gray-400 font-bold">Attempt {topicQuizHistory.length - idx}</span>
                                 <span className={`text-xs font-bold px-2 py-1 rounded ${q.score / q.total >= 0.8 ? 'bg-emerald-100 text-emerald-700' : q.score / q.total >= 0.6 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
                                   {q.score} / {q.total}
                                 </span>
@@ -590,39 +647,39 @@ function StudySessionContent() {
                   {quiz && !isGeneratingQuiz && (
                     <div>
                       {isQuizSubmitted && (
-                        <div className={`mb-6 p-5 rounded-xl text-center shadow-sm ${getQuizScore().score / getQuizScore().total >= 0.8 ? "bg-emerald-50 border border-emerald-200" : "bg-amber-50 border border-amber-200"}`}>
+                        <div className={`mb-6 p-5 rounded-xl text-center shadow-sm ${getQuizScore().score / getQuizScore().total >= 0.8 ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-500/30" : "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-500/30"}`}>
                           <p className="text-3xl mb-2">{getQuizScore().score / getQuizScore().total >= 0.8 ? "🎉" : "📚"}</p>
-                          <p className="text-xl font-bold text-gray-900">Score: {getQuizScore().score}/{getQuizScore().total}</p>
-                          <button onClick={() => setQuiz(null)} className="mt-4 px-4 py-2 bg-white text-gray-700 text-sm font-bold rounded-lg border border-gray-200 hover:bg-gray-50 shadow-sm">Back to Options</button>
+                          <p className="text-xl font-bold text-gray-900 dark:text-white">Score: {getQuizScore().score}/{getQuizScore().total}</p>
+                          <button onClick={() => setQuiz(null)} className="mt-4 px-4 py-2 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-lg border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm transition-colors duration-300">Back to Options</button>
                         </div>
                       )}
 
                       <div className="space-y-6">
                         {Array.isArray(quiz.questions) && quiz.questions.map((q, qIdx) => (
-                          <div key={qIdx} className={`p-5 rounded-xl border transition-all ${isQuizSubmitted ? (userAnswers[qIdx] === q.correct_answer ? "border-emerald-200 bg-emerald-50/50" : "border-red-200 bg-red-50/50") : "border-white bg-white/60 shadow-sm"}`}>
-                            <p className="font-semibold text-gray-900 text-sm mb-4"><span className="text-indigo-500 mr-2">Q{qIdx + 1}.</span>{q.question}</p>
+                          <div key={qIdx} className={`p-5 rounded-xl border transition-all ${isQuizSubmitted ? (userAnswers[qIdx] === q.correct_answer ? "border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-900/20" : "border-red-200 dark:border-red-500/30 bg-red-50/50 dark:bg-red-900/20") : "border-white dark:border-slate-700 bg-white/60 dark:bg-slate-800/60 shadow-sm"}`}>
+                            <p className="font-semibold text-gray-900 dark:text-white text-sm mb-4"><span className="text-indigo-500 mr-2">Q{qIdx + 1}.</span>{q.question}</p>
                             <div className="space-y-2">
                               {Array.isArray(q.options) && q.options.map((opt, oIdx) => {
                                 const isSelected = userAnswers[qIdx] === opt.label;
                                 const isCorrect = isQuizSubmitted && opt.label === q.correct_answer;
                                 const isWrong = isQuizSubmitted && isSelected && opt.label !== q.correct_answer;
-                                let optionClass = "border-gray-100 bg-white hover:border-indigo-300";
-                                if (isSelected && !isQuizSubmitted) optionClass = "border-indigo-500 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-500";
-                                else if (isCorrect) optionClass = "border-emerald-500 bg-emerald-50 text-emerald-700";
-                                else if (isWrong) optionClass = "border-red-500 bg-red-50 text-red-700";
+                                let optionClass = "border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500";
+                                if (isSelected && !isQuizSubmitted) optionClass = "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-500";
+                                else if (isCorrect) optionClass = "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400";
+                                else if (isWrong) optionClass = "border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400";
 
                                 return (
                                   <button key={oIdx} disabled={isQuizSubmitted} onClick={() => handleQuizOptionSelect(qIdx, opt.label)} className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left text-sm transition-all ${optionClass}`}>
-                                    <span className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold shrink-0 ${isSelected && !isQuizSubmitted ? "bg-indigo-600 text-white" : isCorrect ? "bg-emerald-500 text-white" : isWrong ? "bg-red-500 text-white" : "bg-gray-100 text-gray-500"}`}>{opt.label}</span>
+                                    <span className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold shrink-0 ${isSelected && !isQuizSubmitted ? "bg-indigo-600 text-white" : isCorrect ? "bg-emerald-500 text-white" : isWrong ? "bg-red-500 text-white" : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400"}`}>{opt.label}</span>
                                     <span className="flex-1">{opt.text}</span>
                                   </button>
                                 );
                               })}
                             </div>
                             {isQuizSubmitted && (
-                              <div className="mt-4 p-4 bg-white/80 rounded-lg text-sm border border-gray-100">
-                                <p className="font-bold text-gray-900 mb-1 flex items-center gap-1"><Lightbulb size={16} className="text-amber-500" /> Explanation</p>
-                                <p className="text-gray-600">{q.explanation}</p>
+                              <div className="mt-4 p-4 bg-white/80 dark:bg-slate-800/80 rounded-lg text-sm border border-gray-100 dark:border-slate-700">
+                                <p className="font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-1"><Lightbulb size={16} className="text-amber-500" /> Explanation</p>
+                                <p className="text-gray-600 dark:text-gray-400">{q.explanation}</p>
                               </div>
                             )}
                           </div>
@@ -649,13 +706,13 @@ function StudySessionContent() {
 
         {fullscreenPanel !== 'left' && (
         <Panel defaultSize={fullscreenPanel === 'right' ? 100 : 50} minSize={30}>
-          <div className={`flex flex-col bg-white/70 backdrop-blur-xl border border-white overflow-hidden ${
-            fullscreenPanel === 'right' ? 'fixed inset-0 z-[100] rounded-none bg-white/95 shadow-2xl' : 'h-full rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative'
+          <div className={`flex flex-col bg-white/80 dark:bg-[#1E293B]/80 backdrop-blur-2xl border border-white/60 dark:border-slate-700/50 overflow-hidden transition-colors duration-300 ${
+            fullscreenPanel === 'right' ? 'fixed inset-0 z-[100] rounded-none bg-white/95 dark:bg-slate-900/95 shadow-2xl' : 'h-full rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative'
           }`}>
-            <div className="p-4 border-b border-gray-100/50 flex justify-between items-center bg-white/40">
-              <div className="flex items-center gap-2">
-                <Brain className="text-indigo-600" size={20} />
-                <h2 className="font-bold text-gray-900 tracking-tight">AI Coach</h2>
+            <div className="p-5 border-b border-gray-100/50 dark:border-slate-700/50 flex justify-between items-center bg-white/40 dark:bg-slate-800/40 transition-colors duration-300">
+              <div className="flex items-center gap-3">
+                <Brain className="text-indigo-600 dark:text-indigo-400" size={24} />
+                <h2 className="font-bold text-gray-900 dark:text-white tracking-tight transition-colors duration-300 font-outfit text-lg">AI Coach</h2>
               </div>
               <div className="flex items-center gap-3">
                 {!hasStartedLesson && (
@@ -679,15 +736,49 @@ function StudySessionContent() {
                   {msg.sender === 'ai' && (
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white shrink-0 shadow-sm"><Brain size={16} /></div>
                   )}
-                  <div className={`p-4 rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.02)] text-sm leading-relaxed overflow-hidden ${msg.sender === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white/80 border border-white text-gray-700 rounded-tl-none prose prose-sm max-w-none'}`}>
-                    <ReactMarkdown>{msg.text || "..."}</ReactMarkdown>
+                  <div className={`p-4 rounded-2xl shadow-[0_2px_10px_rgb(0,0,0,0.02)] text-sm leading-relaxed overflow-hidden transition-colors duration-300 ${msg.sender === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white/80 dark:bg-slate-800/80 border border-white dark:border-slate-700 text-gray-700 dark:text-gray-300 rounded-tl-none prose prose-sm dark:prose-invert max-w-none'}`}>
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({node, inline, className, children, ...props}) {
+                          const match = /language-(\w+)/.exec(className || '')
+                          return !inline && match ? (
+                            <SyntaxHighlighter
+                              {...props}
+                              children={String(children).replace(/\n$/, '')}
+                              style={vscDarkPlus}
+                              language={match[1]}
+                              PreTag="div"
+                              className="rounded-xl my-4 text-sm !bg-slate-900 border border-slate-700 custom-scrollbar"
+                            />
+                          ) : (
+                            <code {...props} className={`${className || ''} bg-gray-100 dark:bg-slate-900 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-300 font-mono text-[0.85em] border border-transparent dark:border-slate-700`}>
+                              {children}
+                            </code>
+                          )
+                        }
+                      }}
+                    >
+                      {msg.text || "..."}
+                    </ReactMarkdown>
                   </div>
                 </div>
               ))}
               <div ref={chatEndRef} />
             </div>
 
-            <div className="p-4 bg-white/60 border-t border-white backdrop-blur-xl rounded-b-2xl">
+            <div className="p-4 bg-white/60 dark:bg-slate-800/60 border-t border-white dark:border-slate-700 backdrop-blur-xl rounded-b-2xl transition-colors duration-300">
+              {hasStartedLesson && (
+                <div className="flex justify-end mb-3">
+                  <button 
+                    onClick={() => sendChatMessage("Let's move on to the next topic.", "The user has requested to move on to the next topic in the syllabus for this unit. Consult the provided syllabus breakdown (if any) and your own knowledge to determine the next logical sub-topic. Introduce it briefly, provide key points, and end by asking a question to test their understanding.")}
+                    disabled={isTyping}
+                    className="text-xs font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-800/60 transition-colors shadow-sm flex items-center gap-1 disabled:opacity-50"
+                  >
+                    Next Topic <ArrowRight size={14} />
+                  </button>
+                </div>
+              )}
               <form onSubmit={handleChatSubmit} className="relative">
                 <input 
                   type="text" 
@@ -695,7 +786,7 @@ function StudySessionContent() {
                   onChange={(e) => setChatInput(e.target.value)}
                   disabled={isTyping}
                   placeholder={isTyping ? "AI is thinking..." : "Ask a doubt or request an explanation..."} 
-                  className="w-full bg-white/80 border border-gray-100 rounded-xl pl-4 pr-12 py-3.5 text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm transition-all disabled:opacity-50"
+                  className="w-full bg-white/80 dark:bg-slate-800/80 border border-gray-100 dark:border-slate-700 rounded-xl pl-4 pr-12 py-3.5 text-sm focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500/30 outline-none shadow-sm transition-all disabled:opacity-50 text-gray-900 dark:text-white"
                 />
                 <button type="submit" disabled={isTyping} className="absolute right-2 top-2 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50">
                   <Send size={16} />

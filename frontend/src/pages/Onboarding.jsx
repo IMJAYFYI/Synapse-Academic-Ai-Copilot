@@ -48,7 +48,8 @@ export default function Onboarding() {
           study_time: formData.study_time,
           academic_level: formData.academic_level,
           learning_style: formData.learning_style,
-          main_goal: formData.main_goal
+          main_goal: formData.main_goal,
+          reminder_time: formData.reminder_time
         })
       });
 
@@ -119,148 +120,152 @@ export default function Onboarding() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Orbs */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[120px]" />
+        <div className="absolute top-[60%] -right-[10%] w-[40%] h-[60%] rounded-full bg-emerald-500/10 blur-[100px]" />
+      </div>
+
       {/* Top Bar Minimal */}
-      <div className="absolute top-6 left-8 flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-        <BrainCircuit className="text-indigo-600" size={24} />
-        <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
+      <div className="absolute top-8 left-8 flex items-center gap-3 cursor-pointer z-10 hover:opacity-80 transition-opacity" onClick={() => navigate('/')}>
+        <div className="bg-gradient-to-br from-indigo-500 to-violet-600 p-2 rounded-xl shadow-sm">
+          <BrainCircuit className="text-white" size={24} />
+        </div>
+        <span className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 font-outfit tracking-tight">
           Synapse
         </span>
       </div>
 
-      <div className="w-full max-w-xl bg-white rounded-2xl shadow-xl border border-gray-100 p-8 sm:p-12 relative overflow-hidden">
+      <div className="w-full max-w-xl bg-white/80 backdrop-blur-2xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-8 sm:p-12 relative overflow-hidden z-10">
         {/* Progress Bar */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-gray-100">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100/50">
           <div 
-            className="h-full bg-indigo-600 transition-all duration-500 ease-out" 
+            className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-700 ease-out" 
             style={{ width: `${(step / 6) * 100}%` }}
           />
         </div>
 
         {step <= 4 ? (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 mt-4">
+            <div className="flex justify-center mb-8">
+              <div className="w-20 h-20 bg-gradient-to-br from-indigo-50 to-violet-50 rounded-[1.5rem] flex items-center justify-center shadow-inner border border-white/60">
                 {steps[step - 1].icon}
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-center text-gray-900 mb-2">{steps[step - 1].title}</h2>
-            <p className="text-center text-gray-500 mb-8">{steps[step - 1].subtitle}</p>
+            <h2 className="text-3xl font-bold text-center text-gray-900 mb-3 font-outfit tracking-tight">{steps[step - 1].title}</h2>
+            <p className="text-center text-gray-500 mb-10 font-medium text-lg">{steps[step - 1].subtitle}</p>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {steps[step - 1].options.map((opt, idx) => (
                 <button
                   key={idx}
                   onClick={() => handleSelect(steps[step - 1].field, opt.value)}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center justify-between group ${
+                  className={`w-full text-left p-5 rounded-2xl border-2 transition-all flex items-center justify-between group ${
                     formData[steps[step - 1].field] === opt.value 
-                    ? "border-indigo-500 bg-indigo-50" 
-                    : "border-gray-200 hover:border-indigo-200 hover:bg-gray-50"
+                    ? "border-indigo-500 bg-indigo-50/50 shadow-sm" 
+                    : "border-gray-200/60 hover:border-indigo-300 hover:bg-white/90 shadow-[0_2px_10px_rgb(0,0,0,0.02)]"
                   }`}
                 >
                   <div>
-                    <div className={`font-bold text-lg ${formData[steps[step - 1].field] === opt.value ? "text-indigo-900" : "text-gray-800"}`}>
+                    <div className={`font-bold text-lg mb-1 ${formData[steps[step - 1].field] === opt.value ? "text-indigo-900" : "text-gray-800"}`}>
                       {opt.label}
                     </div>
-                    <div className={`text-sm ${formData[steps[step - 1].field] === opt.value ? "text-indigo-600" : "text-gray-500"}`}>
+                    <div className={`text-sm font-medium ${formData[steps[step - 1].field] === opt.value ? "text-indigo-600/80" : "text-gray-500"}`}>
                       {opt.desc}
                     </div>
                   </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${formData[steps[step - 1].field] === opt.value ? "border-indigo-500 bg-indigo-500" : "border-gray-300"}`}>
-                    {formData[steps[step - 1].field] === opt.value && <div className="w-2 h-2 bg-white rounded-full" />}
+                  <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors ${formData[steps[step - 1].field] === opt.value ? "border-indigo-500 bg-indigo-500" : "border-gray-300"}`}>
+                    {formData[steps[step - 1].field] === opt.value && <div className="w-2.5 h-2.5 bg-white rounded-full animate-in zoom-in" />}
                   </div>
                 </button>
               ))}
             </div>
           </div>
         ) : step === 5 ? (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center">
-                <BellRing className="text-indigo-500" size={32} />
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 mt-4">
+            <div className="flex justify-center mb-8">
+              <div className="w-20 h-20 bg-gradient-to-br from-indigo-50 to-violet-50 rounded-[1.5rem] flex items-center justify-center shadow-inner border border-white/60">
+                <BellRing className="text-indigo-500" size={36} />
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-center text-gray-900 mb-2">Set Your Study Reminder</h2>
-            <p className="text-center text-gray-500 mb-8">Choose the exact time you want Synapse to notify you.</p>
+            <h2 className="text-3xl font-bold text-center text-gray-900 mb-3 font-outfit tracking-tight">Set Your Study Reminder</h2>
+            <p className="text-center text-gray-500 mb-10 font-medium text-lg">Choose the exact time you want Synapse to notify you.</p>
 
-            <div className="flex flex-col items-center justify-center space-y-6">
+            <div className="flex flex-col items-center justify-center space-y-8">
               <input 
                 type="time" 
                 name="reminder_time"
                 value={formData.reminder_time}
                 onChange={handleChange}
-                className="text-4xl font-bold text-indigo-900 bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-6 outline-none focus:border-indigo-500 transition-all text-center w-full"
+                className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600 bg-white/50 border-2 border-indigo-100 rounded-3xl p-8 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all text-center w-full shadow-inner"
               />
               <button 
                 onClick={() => {
                   if ("Notification" in window) {
                     Notification.requestPermission().then(permission => {
-                      if (permission === "granted") {
-                        localStorage.setItem("synapse_reminder_time", formData.reminder_time);
-                      }
                       setStep(6);
                     });
                   } else {
-                    localStorage.setItem("synapse_reminder_time", formData.reminder_time);
                     setStep(6);
                   }
                 }}
-                className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-4.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-lg rounded-2xl shadow-[0_8px_30px_rgb(79,70,229,0.25)] hover:opacity-90 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-3"
               >
-                Continue <ArrowRight size={18} />
+                Continue <ArrowRight size={22} />
               </button>
             </div>
           </div>
         ) : (
-          <div className="animate-in fade-in zoom-in-95 duration-500">
-            <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-200">
-                <User className="text-white" size={32} />
+          <div className="animate-in fade-in zoom-in-95 duration-500 mt-4">
+            <div className="flex justify-center mb-8">
+              <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-[1.5rem] flex items-center justify-center shadow-[0_8px_30px_rgb(79,70,229,0.3)]">
+                <User className="text-white" size={36} />
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-center text-gray-900 mb-2">Create your account</h2>
-            <p className="text-center text-gray-500 mb-8">Your AI Tutor is perfectly calibrated and ready.</p>
+            <h2 className="text-3xl font-bold text-center text-gray-900 mb-3 font-outfit tracking-tight">Create your account</h2>
+            <p className="text-center text-gray-500 mb-10 font-medium text-lg">Your AI Tutor is perfectly calibrated and ready.</p>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm font-medium text-center">
+              <div className="mb-6 p-4 bg-red-50/80 text-red-700 rounded-xl text-sm font-bold text-center border border-red-100">
                 {error}
               </div>
             )}
 
-            <form onSubmit={handleSignup} className="space-y-4">
+            <form onSubmit={handleSignup} className="space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Full Name</label>
                 <input 
                   type="text" 
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                  className="w-full px-5 py-3.5 bg-white/50 border border-gray-200/80 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none transition-all font-medium text-gray-900"
                   placeholder="John Doe"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Email</label>
                 <input 
                   type="email" 
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                  className="w-full px-5 py-3.5 bg-white/50 border border-gray-200/80 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none transition-all font-medium text-gray-900"
                   placeholder="john@example.com"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Password</label>
                 <input 
                   type="password" 
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                  className="w-full px-5 py-3.5 bg-white/50 border border-gray-200/80 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none transition-all font-medium text-gray-900"
                   placeholder="••••••••"
                 />
               </div>
@@ -268,9 +273,9 @@ export default function Onboarding() {
               <button 
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full mt-4 py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+                className="w-full mt-8 py-4.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-lg rounded-2xl shadow-[0_8px_30px_rgb(79,70,229,0.25)] hover:opacity-90 transition-all flex items-center justify-center gap-3 disabled:opacity-70 transform hover:-translate-y-1"
               >
-                {isSubmitting ? "Generating AI Profile..." : "Start Learning"} <ArrowRight size={18} />
+                {isSubmitting ? "Generating AI Profile..." : "Start Learning"} <ArrowRight size={22} />
               </button>
             </form>
           </div>
@@ -280,7 +285,7 @@ export default function Onboarding() {
         {step > 1 && step <= 6 && (
           <button 
             onClick={() => setStep(prev => prev - 1)}
-            className="absolute top-6 right-6 text-sm font-medium text-gray-400 hover:text-gray-700 transition-colors"
+            className="absolute top-8 right-8 text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors bg-white/50 px-4 py-2 rounded-full border border-gray-100"
           >
             Go Back
           </button>

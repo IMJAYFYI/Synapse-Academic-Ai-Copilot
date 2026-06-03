@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import Topbar from "./components/Topbar";
-import Signup from "./pages/Signup";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, createRoutesFromElements, Route, Navigate } from "react-router-dom";
 import Sidebar from "./components/sidebar";
 import Dashboard from "./pages/Dashboard";
 import StudySession from "./pages/StudySession";
@@ -16,13 +15,25 @@ import { StudyProvider, useStudyContext } from "./context/StudyContext";
 // Private Route Wrapper
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useStudyContext();
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+}
+
+// Public Route Wrapper (redirects to dashboard if already logged in)
+function PublicRoute({ children }) {
+  const { isAuthenticated } = useStudyContext();
+  return !isAuthenticated ? children : <Navigate to="/dashboard" replace />;
+}
+
+// Catch-all Wrapper
+function CatchAllRoute() {
+  const { isAuthenticated } = useStudyContext();
+  return <Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />;
 }
 
 // Layout Wrapper
 function MainLayout({ children }) {
   return (
-    <div className="flex h-screen bg-gray-50 font-sans relative overflow-hidden">
+    <div className="flex h-screen bg-gray-50 dark:bg-slate-900 font-sans relative overflow-hidden transition-colors duration-300">
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
         <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[120px]" />
         <div className="absolute top-[60%] -right-[10%] w-[40%] h-[60%] rounded-full bg-emerald-500/10 blur-[100px]" />
@@ -38,14 +49,36 @@ function MainLayout({ children }) {
   );
 }
 
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <>
+      {/* Landing page is ALWAYS available at / */}
+      <Route path="/" element={<Landing />} />
+      
+      {/* Unauthenticated Routes */}
+      <Route path="/onboarding" element={<PublicRoute><Onboarding /></PublicRoute>} />
+      <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+      
+      {/* Authenticated Routes */}
+      <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
+      <Route path="/session" element={<ProtectedRoute><MainLayout><StudySession /></MainLayout></ProtectedRoute>} />
+      <Route path="/schedule" element={<ProtectedRoute><MainLayout><Schedule /></MainLayout></ProtectedRoute>} />
+      <Route path="/activity" element={<ProtectedRoute><MainLayout><Activity /></MainLayout></ProtectedRoute>} />
+      <Route path="/syllabus" element={<ProtectedRoute><MainLayout><Syllabus /></MainLayout></ProtectedRoute>} />
+
+      {/* Catch-all */}
+      <Route path="*" element={<CatchAllRoute />} />
+    </>
+  )
+);
+
 function AppContent() {
-  const { isAuthenticated } = useStudyContext();
+  const { isAuthenticated, reminderTime } = useStudyContext();
 
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const checkReminder = () => {
-      const reminderTime = localStorage.getItem("synapse_reminder_time");
       if (!reminderTime) return;
 
       const now = new Date();
@@ -63,34 +96,11 @@ function AppContent() {
       }
     };
 
-    // Check every 5 seconds so we don't miss the exact minute
     const interval = setInterval(checkReminder, 5000);
     return () => clearInterval(interval);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, reminderTime]);
 
-  return (
-    <BrowserRouter>
-      <Routes>
-        {/* Landing page is ALWAYS available at / */}
-        <Route path="/" element={<Landing />} />
-        
-        {/* Unauthenticated Routes (redirect to dashboard if logged in) */}
-        <Route path="/onboarding" element={!isAuthenticated ? <Onboarding /> : <Navigate to="/dashboard" replace />} />
-        <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />} />
-        <Route path="/signup" element={!isAuthenticated ? <Signup /> : <Navigate to="/dashboard" replace />} />
-        
-        {/* Authenticated Routes */}
-        <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
-        <Route path="/session" element={<ProtectedRoute><MainLayout><StudySession /></MainLayout></ProtectedRoute>} />
-        <Route path="/schedule" element={<ProtectedRoute><MainLayout><Schedule /></MainLayout></ProtectedRoute>} />
-        <Route path="/activity" element={<ProtectedRoute><MainLayout><Activity /></MainLayout></ProtectedRoute>} />
-        <Route path="/syllabus" element={<ProtectedRoute><MainLayout><Syllabus /></MainLayout></ProtectedRoute>} />
-
-        {/* Catch-all */}
-        <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
-      </Routes>
-    </BrowserRouter>
-  );
+  return <RouterProvider router={router} />;
 }
 
 function App() {
