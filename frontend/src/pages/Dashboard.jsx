@@ -25,12 +25,12 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchDashboardStats() {
       try {
-        const res = await authFetch(`http://localhost:8000/api/dashboard-stats/${user.id}`);
+        const res = await authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/dashboard-stats/${user.id}`);
         const data = await res.json();
         setStats(data);
         
         try {
-          const badgesRes = await authFetch(`http://localhost:8000/api/badges/${user.id}`);
+          const badgesRes = await authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/badges/${user.id}`);
           if (badgesRes.ok) {
             setBadges(await badgesRes.json());
           }

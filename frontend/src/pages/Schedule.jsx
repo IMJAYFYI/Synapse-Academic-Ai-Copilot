@@ -36,7 +36,7 @@ export default function Schedule() {
     setLoadingUnits(prev => ({ ...prev, [index]: true }));
     
     try {
-      const response = await authFetch("http://localhost:8000/api/extract-subject", {
+      const response = await authFetch((import.meta.env.VITE_API_URL || "http://localhost:8000") + "/api/extract-subject", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -65,7 +65,7 @@ export function StudyProvider({ children }) {
     if (!user?.id || !globalActiveTopic) return;
     const minutesToLog = timerMode === "test" ? 25 : TIMER_DURATIONS.work / 60;
     try {
-      const response = await authFetch("http://localhost:8000/api/record-session", {
+      const response = await authFetch((import.meta.env.VITE_API_URL || "http://localhost:8000") + "/api/record-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, topic_title: globalActiveTopic, duration_minutes: minutesToLog }),
@@ -183,7 +183,7 @@ export function StudyProvider({ children }) {
       // Sync state from backend
       const syncState = async () => {
         try {
-          const response = await authFetch(`http://localhost:8000/api/sync-user-state/${user.id}`);
+          const response = await authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/sync-user-state/${user.id}`);
           if (response.ok) {
             const data = await response.json();
             if (data.syllabus_data) {

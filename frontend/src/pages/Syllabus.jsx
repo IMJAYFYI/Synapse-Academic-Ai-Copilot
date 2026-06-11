@@ -33,7 +33,7 @@ export default function Syllabus() {
 
     try {
       // 2. Send POST request to our FastAPI backend
-      const response = await authFetch("http://localhost:8000/api/upload-syllabus", {
+      const response = await authFetch((import.meta.env.VITE_API_URL || "http://localhost:8000") + "/api/upload-syllabus", {
         method: "POST",
         body: formData,
       });

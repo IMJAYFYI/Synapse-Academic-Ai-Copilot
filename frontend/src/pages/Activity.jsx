@@ -34,7 +34,7 @@ export default function Activity() {
     if (!user?.id) return;
     const fetchActivity = async () => {
       try {
-        const response = await authFetch(`http://localhost:8000/api/activity-data/${user.id}`);
+        const response = await authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/activity-data/${user.id}`);
         if (response.ok) {
           const result = await response.json();
           setActivityMap(result.data);
@@ -42,14 +42,14 @@ export default function Activity() {
         }
         
         try {
-          const badgesRes = await authFetch(`http://localhost:8000/api/badges/${user.id}`);
+          const badgesRes = await authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/badges/${user.id}`);
           if (badgesRes.ok) {
             setBadges(await badgesRes.json());
           }
         } catch(e) { console.error(e); }
         
         try {
-          const eventsRes = await authFetch(`http://localhost:8000/api/recent-events/${user.id}`);
+          const eventsRes = await authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/recent-events/${user.id}`);
           if (eventsRes.ok) {
             setRecentEvents(await eventsRes.json());
           }

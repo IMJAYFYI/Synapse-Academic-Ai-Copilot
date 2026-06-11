@@ -17,7 +17,7 @@ export default function Login() {
     setError('');
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/auth/google', {
+      const response = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential: credentialResponse.credential })
@@ -48,7 +48,7 @@ export default function Login() {
     const endpoint = isLoginMode ? '/api/login' : '/api/signup';
     
     try {
-      const response = await fetch(`http://localhost:8000${endpoint}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(

@@ -35,7 +35,7 @@ export default function Topbar() {
             setTheme(newTheme);
             if (user?.id) {
               try {
-                authFetch('http://localhost:8000/api/settings/update', {
+                authFetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/settings/update', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ user_id: user.id, theme: newTheme })
@@ -174,7 +174,7 @@ export default function Topbar() {
                       setReminderTime(e.target.value);
                       if (user?.id) {
                         try {
-                          authFetch('http://localhost:8000/api/settings/update', {
+                          authFetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/settings/update', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ user_id: user.id, reminder_time: e.target.value })

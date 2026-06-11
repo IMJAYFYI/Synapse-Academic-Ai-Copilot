@@ -87,7 +87,7 @@ function StudySessionContent() {
     if (!user?.id) return; 
     const fetchHistory = async () => {
       try {
-        const response = await authFetch(`http://localhost:8000/api/chat/history/${user.id}/${encodeURIComponent(activeTopic)}`);
+        const response = await authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/chat/history/${user.id}/${encodeURIComponent(activeTopic)}`);
         if (response.ok) {
           const data = await response.json();
           if (data.history && data.history.length > 0) {
@@ -107,7 +107,7 @@ function StudySessionContent() {
     if (!user?.id) return;
     const fetchNotes = async () => {
       try {
-        const response = await authFetch(`http://localhost:8000/api/notes/${user.id}/${encodeURIComponent(activeTopic)}`);
+        const response = await authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/notes/${user.id}/${encodeURIComponent(activeTopic)}`);
         if (response.ok) {
           const data = await response.json();
           setNotes(data.notes);
@@ -162,7 +162,7 @@ function StudySessionContent() {
     const specificUnits = globalUnitData?.[topicIndex];
 
     try {
-      const response = await authFetch(`http://localhost:8000/api/chat`, {
+      const response = await authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -243,7 +243,7 @@ function StudySessionContent() {
     if (!user?.id) return;
     setIsGeneratingNotes(true);
     try {
-      const response = await authFetch("http://localhost:8000/api/notes/generate", {
+      const response = await authFetch((import.meta.env.VITE_API_URL || "http://localhost:8000") + "/api/notes/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, topic: activeTopic })
@@ -269,7 +269,7 @@ function StudySessionContent() {
     try {
       // Modify topic to include unit target if specified
       const finalTopic = quizTargetUnit === "Full Topic" ? activeTopic : `${activeTopic} - ${quizTargetUnit}`;
-      const response = await authFetch("http://localhost:8000/api/quiz/generate", {
+      const response = await authFetch((import.meta.env.VITE_API_URL || "http://localhost:8000") + "/api/quiz/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -308,7 +308,7 @@ function StudySessionContent() {
     }, 0);
 
     try {
-      await authFetch("http://localhost:8000/api/quiz/submit", {
+      await authFetch((import.meta.env.VITE_API_URL || "http://localhost:8000") + "/api/quiz/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -378,7 +378,7 @@ function StudySessionContent() {
                   const newTopic = e.target.value;
                   setActiveTopic(newTopic);
                   if (user?.id) {
-                    authFetch("http://localhost:8000/api/update-active-topic", {
+                    authFetch((import.meta.env.VITE_API_URL || "http://localhost:8000") + "/api/update-active-topic", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ user_id: user.id, active_topic: newTopic })
