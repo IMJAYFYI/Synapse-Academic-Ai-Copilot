@@ -51,6 +51,7 @@ class ChatRequest(PydanticBaseModel):
     history: List[Dict[str, str]]
     active_topic: str
     user_id: int
+    syllabus_context: Optional[str] = None
 
 class StudySessionRequest(PydanticBaseModel):
     topic_title: str
@@ -255,13 +256,33 @@ async def record_study_session(request: StudySessionRequest, db: Session = Depen
                 new_badges.append(b.badge_name)
                 
         # 3. Marathon Badge
-        if "Marathon" not in user_badges and request.duration_minutes >= 60:
-            b = models.Badge(user_id=request.user_id, badge_name="Marathon", description="Studied for over 60 minutes in one session.", icon="🏃‍♂️")
-            db.add(b)
-            new_badges.append(b.badge_name)
+        if "Marathon" not in user_badges:
+            # Calculate total minutes studied today
+            today_date = datetime.utcnow().date()
+            all_records = db.query(models.StudyRecord).filter(models.StudyRecord.user_id == request.user_id).all()
+            total_minutes_today = sum([r.duration_minutes for r in all_records if r.completion_date and r.completion_date.date() == today_date])
             
+            if total_minutes_today >= 120:
+                b = models.Badge(user_id=request.user_id, badge_name="Marathon", description="Studied for over 120 minutes in a single day.", icon="🏃‍♂️")
+                db.add(b)
+                new_badges.append(b.badge_name)
+                
         if new_badges:
             db.commit()
+
+        # Add a system message to the chat history to persist the notification
+        alert_msg = f"✅ Session complete! Logged {request.duration_minutes} minutes of **{request.topic_title}**."
+        if new_badges:
+            alert_msg += f"\n\n🏆 **Congratulations!** You just unlocked new badges: {', '.join(new_badges)}"
+            
+        system_chat_msg = models.ChatMessage(
+            user_id=request.user_id,
+            topic_title=request.topic_title,
+            sender="ai",
+            text=alert_msg
+        )
+        db.add(system_chat_msg)
+        db.commit()
         
         return {
             "status": "success", 
@@ -350,24 +371,31 @@ async def study_coach_chat(request: ChatRequest, db: Session = Depends(get_db)):
 
         async def event_generator():
             full_response = ""
-            # Stream chunks from LangChain
-            for chunk in chat_with_coach_stream(ai_query, request.history, request.active_topic):
-                full_response += chunk
-                # SSE format: data: {...}\n\n
-                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
-            
-            # Save AI message to DB after stream finishes
-            ai_msg = models.ChatMessage(
-                user_id=request.user_id, 
-                topic_title=request.active_topic, 
-                sender="ai", 
-                text=full_response
-            )
-            db.add(ai_msg)
-            db.commit()
-            
-            # Send done signal
-            yield f"data: {json.dumps({'done': True})}\n\n"
+            try:
+                # Stream chunks from LangChain
+                for chunk in chat_with_coach_stream(ai_query, request.history, request.active_topic, request.syllabus_context):
+                    full_response += chunk
+                    # SSE format: data: {...}\n\n
+                    yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+                
+                # Send done signal
+                yield f"data: {json.dumps({'done': True})}\n\n"
+            except Exception as stream_e:
+                error_msg = f"\n\n❌ Error communicating with AI model: {str(stream_e)}"
+                yield f"data: {json.dumps({'chunk': error_msg})}\n\n"
+                full_response += error_msg
+            finally:
+                # Save AI message to DB after stream finishes or if client disconnects early
+                if full_response.strip():
+                    # We need a new DB session if the old one was closed by the disconnect, but usually it's still open
+                    ai_msg = models.ChatMessage(
+                        user_id=request.user_id, 
+                        topic_title=request.active_topic, 
+                        sender="ai", 
+                        text=full_response
+                    )
+                    db.add(ai_msg)
+                    db.commit()
 
         return StreamingResponse(event_generator(), media_type="text/event-stream")
     except Exception as e:
@@ -404,6 +432,18 @@ async def get_dashboard_stats(user_id: int, db: Session = Depends(get_db)):
                 func.date(models.StudyRecord.completion_date) == day_date
             ).scalar() or 0
             weekly_hours.append({"name": day_names[i], "hours": round(day_minutes / 60, 1)})
+            
+        # Get last week hours
+        last_monday = monday - timedelta(days=7)
+        last_monday_date = last_monday.date()
+        last_week_hours = []
+        for i in range(7):
+            day_date = last_monday_date + timedelta(days=i)
+            day_minutes = db.query(func.sum(models.StudyRecord.duration_minutes)).filter(
+                models.StudyRecord.user_id == user_id,
+                func.date(models.StudyRecord.completion_date) == day_date
+            ).scalar() or 0
+            last_week_hours.append({"name": day_names[i], "hours": round(day_minutes / 60, 1)})
         
         # Calculate current streak
         all_dates = db.query(
@@ -455,6 +495,7 @@ async def get_dashboard_stats(user_id: int, db: Session = Depends(get_db)):
             "status": "success",
             "user_name": user.name,
             "weekly_hours": weekly_hours,
+            "last_week_hours": last_week_hours,
             "study_time_today_minutes": today_records,
             "current_streak": current_streak,
             "personal_best_streak": max(best_streak, current_streak),
@@ -463,6 +504,69 @@ async def get_dashboard_stats(user_id: int, db: Session = Depends(get_db)):
         }
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/recent-events/{user_id}")
+async def get_recent_events(user_id: int, db: Session = Depends(get_db)):
+    try:
+        events = []
+        
+        records = db.query(models.StudyRecord).filter(models.StudyRecord.user_id == user_id).order_by(models.StudyRecord.completion_date.desc()).limit(5).all()
+        for r in records:
+            events.append({
+                "type": "session",
+                "title": "Completed Study Session",
+                "subtitle": f"Studied '{r.topic_title}' for {r.duration_minutes}m",
+                "timestamp": r.completion_date.isoformat() if r.completion_date else "",
+                "icon": "⏱️"
+            })
+            
+        quizzes = db.query(models.QuizResult).filter(models.QuizResult.user_id == user_id).order_by(models.QuizResult.completed_at.desc()).limit(5).all()
+        for q in quizzes:
+            events.append({
+                "type": "quiz",
+                "title": "Quiz Completed",
+                "subtitle": f"Scored {q.score}/{q.total} on '{q.topic}'",
+                "timestamp": q.completed_at.isoformat() if q.completed_at else "",
+                "icon": "🎯"
+            })
+            
+        badges = db.query(models.Badge).filter(models.Badge.user_id == user_id).order_by(models.Badge.unlocked_at.desc()).limit(5).all()
+        for b in badges:
+            events.append({
+                "type": "badge",
+                "title": "Achievement Unlocked!",
+                "subtitle": f"Earned the '{b.badge_name}' badge",
+                "timestamp": b.unlocked_at.isoformat() if b.unlocked_at else "",
+                "icon": "🏆"
+            })
+            
+        syllabi = db.query(models.Syllabus).filter(models.Syllabus.user_id == user_id).order_by(models.Syllabus.upload_date.desc()).limit(5).all()
+        for s in syllabi:
+            events.append({
+                "type": "upload",
+                "title": "Syllabus Uploaded",
+                "subtitle": f"Uploaded '{s.filename}'",
+                "timestamp": s.upload_date.isoformat() if s.upload_date else "",
+                "icon": "📄"
+            })
+            
+        notes = db.query(models.StudyNote).filter(models.StudyNote.user_id == user_id).order_by(models.StudyNote.created_at.desc()).limit(5).all()
+        for n in notes:
+            events.append({
+                "type": "note",
+                "title": "Smart Notes Generated",
+                "subtitle": f"Generated notes for '{n.topic}'",
+                "timestamp": n.created_at.isoformat() if n.created_at else "",
+                "icon": "📝"
+            })
+            
+        events = [e for e in events if e["timestamp"]]
+        events.sort(key=lambda x: x["timestamp"], reverse=True)
+        
+        return events[:10]
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

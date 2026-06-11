@@ -1,4 +1,6 @@
-import { createContext, useState, useContext, useEffect } from 'react';
+import { createContext, useState, useContext, useEffect, useRef } from 'react';
+
+export const TIMER_DURATIONS = { work: 25 * 60, short: 5 * 60, long: 15 * 60, test: 5, test_break: 5 };
 
 const StudyContext = createContext();
 
@@ -38,9 +40,128 @@ export function StudyProvider({ children }) {
 
   const [globalQuizHistory, setGlobalQuizHistory] = useState([]);
   
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('synapse_theme') || 'dark');
   const [reminderTime, setReminderTime] = useState('18:00');
   const [globalActiveTopic, setGlobalActiveTopic] = useState("General Study");
+  const [globalSystemMessage, setGlobalSystemMessage] = useState(null);
+
+  // --- GLOBAL TIMER STATE ---
+  const [timerMode, setTimerMode] = useState("work");
+  const [timerTimeLeft, setTimerTimeLeft] = useState(TIMER_DURATIONS.work);
+  const [timerIsRunning, setTimerIsRunning] = useState(false);
+  const expectedEndTimeRef = useRef(null);
+  const intervalRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  
+  const [isAlarmRinging, setIsAlarmRinging] = useState(false);
+  const alarmIntervalRef = useRef(null);
+
+  const stopAlarm = () => {
+    setIsAlarmRinging(false);
+    clearInterval(alarmIntervalRef.current);
+  };
+
+  const saveSessionToDatabaseGlobal = async () => {
+    if (!user?.id || !globalActiveTopic) return;
+    const minutesToLog = timerMode === "test" ? 25 : TIMER_DURATIONS.work / 60;
+    try {
+      const response = await authFetch("http://localhost:8000/api/record-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id, topic_title: globalActiveTopic, duration_minutes: minutesToLog }),
+      });
+      const data = await response.json();
+      let alertMsg = `✅ Session complete! Logged ${minutesToLog} minutes of **${globalActiveTopic}**.`;
+      let bodyText = `Great job! You logged ${minutesToLog} minutes of ${globalActiveTopic}.`;
+      
+      if (data.new_badges && data.new_badges.length > 0) {
+        alertMsg += `\n\n🏆 **Congratulations!** You just unlocked new badges: ${data.new_badges.join(", ")}`;
+        bodyText += `\n🏆 You unlocked new badges: ${data.new_badges.join(", ")}`;
+      }
+      
+      setGlobalSystemMessage({ topic: globalActiveTopic, text: alertMsg, timestamp: Date.now() });
+      
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Pomodoro Complete!", { body: bodyText });
+      }
+    } catch (error) {
+      console.error("Failed to save session globally", error);
+    }
+  };
+
+  const toggleTimer = () => {
+    if (timerIsRunning) {
+      setTimerIsRunning(false);
+      clearInterval(intervalRef.current);
+    } else {
+      // Initialize and unlock Web Audio API context safely on user click
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+      
+      setTimerIsRunning(true);
+      expectedEndTimeRef.current = Date.now() + timerTimeLeft * 1000;
+      intervalRef.current = setInterval(() => {
+        const now = Date.now();
+        const remainingSeconds = Math.round((expectedEndTimeRef.current - now) / 1000);
+        if (remainingSeconds <= 0) {
+          clearInterval(intervalRef.current);
+          setTimerTimeLeft(0);
+          setTimerIsRunning(false);
+          if (timerMode === "work" || timerMode === "test") {
+            saveSessionToDatabaseGlobal();
+          } else {
+             if ("Notification" in window && Notification.permission === "granted") {
+               new Notification("Break Over!", { body: `Time to get back to studying!` });
+             }
+             
+             // Synthesize a foolproof digital alarm sound using Web Audio API
+             const playBeep = () => {
+               if (!audioCtxRef.current) return;
+               const ctx = audioCtxRef.current;
+               const osc = ctx.createOscillator();
+               const gain = ctx.createGain();
+               osc.type = 'square';
+               osc.frequency.setValueAtTime(880, ctx.currentTime);
+               
+               gain.gain.setValueAtTime(0, ctx.currentTime);
+               gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05);
+               gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.15);
+               gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.25);
+               gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.35);
+               
+               osc.connect(gain);
+               gain.connect(ctx.destination);
+               osc.start(ctx.currentTime);
+               osc.stop(ctx.currentTime + 0.4);
+             };
+             
+             playBeep();
+             alarmIntervalRef.current = setInterval(playBeep, 1000);
+             setIsAlarmRinging(true);
+          }
+        } else {
+          setTimerTimeLeft(remainingSeconds);
+        }
+      }, 100);
+    }
+  };
+
+  const resetTimer = () => {
+    setTimerIsRunning(false);
+    clearInterval(intervalRef.current);
+    setTimerTimeLeft(TIMER_DURATIONS[timerMode]);
+  };
+
+  const switchTimerMode = (newMode) => {
+    setTimerMode(newMode);
+    setTimerIsRunning(false);
+    clearInterval(intervalRef.current);
+    setTimerTimeLeft(TIMER_DURATIONS[newMode]);
+  };
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -49,7 +170,7 @@ export function StudyProvider({ children }) {
     } else {
       root.classList.remove('dark');
     }
-    // Theme is saved to DB via API calls in Topbar, not here.
+    localStorage.setItem('synapse_theme', theme);
   }, [theme]);
 
   // FIX 2: Sync to localStorage
@@ -128,7 +249,13 @@ export function StudyProvider({ children }) {
       globalQuizHistory, setGlobalQuizHistory,
       theme, setTheme,
       reminderTime, setReminderTime,
-      globalActiveTopic, setGlobalActiveTopic
+      globalActiveTopic, setGlobalActiveTopic,
+      timerMode, setTimerMode,
+      timerTimeLeft, setTimerTimeLeft,
+      timerIsRunning, setTimerIsRunning,
+      toggleTimer, resetTimer, switchTimerMode,
+      globalSystemMessage,
+      isAlarmRinging, stopAlarm
     }}>
       {children}
     </StudyContext.Provider>

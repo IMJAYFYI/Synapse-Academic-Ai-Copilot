@@ -130,7 +130,7 @@ def ingest_syllabus_to_vectorstore(text: str, syllabus_id: int):
     metadatas = [{"syllabus_id": syllabus_id}] * len(splits)
     vectorstore.add_texts(texts=splits, metadatas=metadatas)
 
-def chat_with_coach_stream(user_message: str, chat_history: list, active_topic: str):
+def chat_with_coach_stream(user_message: str, chat_history: list, active_topic: str, syllabus_context: str = None):
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash", 
         temperature=0.3, 
@@ -149,9 +149,14 @@ def chat_with_coach_stream(user_message: str, chat_history: list, active_topic: 
     except:
         rag_context = "No additional textbook context found."
     
+    syllabus_instruction = ""
+    if syllabus_context:
+        syllabus_instruction = f"\n\nHere is the exact syllabus breakdown for {active_topic}:\n{syllabus_context}\nYou MUST use this as the absolute source of truth for all unit numbers and topics. If the student asks to start 'Unit X', look at this exact breakdown to see what Unit X is.\n"
+
     messages = [
         SystemMessage(
             content=f"You are an expert AI Study Coach. The student is currently studying: [{active_topic}].\n\n"
+                    f"{syllabus_instruction}"
                     f"Use the following retrieved context from their syllabus/textbook to answer accurately. "
                     f"If the context doesn't contain the answer, you can use your own knowledge, but prioritize the provided text.\n\n"
                     f"--- RETRIEVED CONTEXT ---\n{rag_context}\n------------------------\n\n"

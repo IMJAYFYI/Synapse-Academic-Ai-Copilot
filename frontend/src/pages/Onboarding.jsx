@@ -120,7 +120,7 @@ export default function Onboarding() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[#F9F8F6] flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Background Orbs */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
         <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[120px]" />
@@ -128,16 +128,16 @@ export default function Onboarding() {
       </div>
 
       {/* Top Bar Minimal */}
-      <div className="absolute top-8 left-8 flex items-center gap-3 cursor-pointer z-10 hover:opacity-80 transition-opacity" onClick={() => navigate('/')}>
-        <div className="bg-gradient-to-br from-indigo-500 to-violet-600 p-2 rounded-xl shadow-sm">
-          <BrainCircuit className="text-white" size={24} />
+      <div className="absolute top-8 left-8 flex items-center gap-3 cursor-pointer z-10 group hover:opacity-80 transition-opacity" onClick={() => navigate('/')}>
+        <div className="text-emerald-700 transition-opacity">
+          <BrainCircuit size={28} />
         </div>
-        <span className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 font-outfit tracking-tight">
-          Synapse
+        <span className="text-2xl font-bold text-gray-900 font-playfair tracking-tight">
+          Synapse.
         </span>
       </div>
 
-      <div className="w-full max-w-xl bg-white/80 backdrop-blur-2xl rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 p-8 sm:p-12 relative overflow-hidden z-10">
+      <div className="w-full max-w-xl bg-white border border-gray-200 p-8 sm:p-12 rounded-2xl shadow-sm">
         {/* Progress Bar */}
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100/50">
           <div 
@@ -153,7 +153,7 @@ export default function Onboarding() {
                 {steps[step - 1].icon}
               </div>
             </div>
-            <h2 className="text-3xl font-bold text-center text-gray-900 mb-3 font-outfit tracking-tight">{steps[step - 1].title}</h2>
+            <h2 className="text-3xl font-bold text-center text-gray-900 mb-3 font-playfair tracking-tight">{steps[step - 1].title}</h2>
             <p className="text-center text-gray-500 mb-10 font-medium text-lg">{steps[step - 1].subtitle}</p>
 
             <div className="space-y-4">
@@ -189,7 +189,7 @@ export default function Onboarding() {
                 <BellRing className="text-indigo-500" size={36} />
               </div>
             </div>
-            <h2 className="text-3xl font-bold text-center text-gray-900 mb-3 font-outfit tracking-tight">Set Your Study Reminder</h2>
+            <h2 className="text-3xl font-bold text-center text-gray-900 mb-3 font-playfair tracking-tight">Set Your Study Reminder</h2>
             <p className="text-center text-gray-500 mb-10 font-medium text-lg">Choose the exact time you want Synapse to notify you.</p>
 
             <div className="flex flex-col items-center justify-center space-y-8">
@@ -210,7 +210,7 @@ export default function Onboarding() {
                     setStep(6);
                   }
                 }}
-                className="w-full py-4.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-lg rounded-2xl shadow-[0_8px_30px_rgb(79,70,229,0.25)] hover:opacity-90 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-3"
+                className="w-full py-4 bg-gray-100 text-gray-800 border border-gray-200 font-bold text-lg rounded-lg hover:bg-gray-200 transition-all flex items-center justify-center gap-3"
               >
                 Continue <ArrowRight size={22} />
               </button>
@@ -223,7 +223,7 @@ export default function Onboarding() {
                 <User className="text-white" size={36} />
               </div>
             </div>
-            <h2 className="text-3xl font-bold text-center text-gray-900 mb-3 font-outfit tracking-tight">Create your account</h2>
+            <h2 className="text-3xl font-bold text-center text-gray-900 mb-3 font-playfair tracking-tight">Create your account</h2>
             <p className="text-center text-gray-500 mb-10 font-medium text-lg">Your AI Tutor is perfectly calibrated and ready.</p>
 
             {error && (
@@ -273,7 +273,7 @@ export default function Onboarding() {
               <button 
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full mt-8 py-4.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-lg rounded-2xl shadow-[0_8px_30px_rgb(79,70,229,0.25)] hover:opacity-90 transition-all flex items-center justify-center gap-3 disabled:opacity-70 transform hover:-translate-y-1"
+                className="w-full mt-8 py-4 bg-gray-100 text-gray-800 border border-gray-200 font-bold text-lg rounded-lg hover:bg-gray-200 transition-all flex items-center justify-center gap-3 disabled:opacity-70"
               >
                 {isSubmitting ? "Generating AI Profile..." : "Start Learning"} <ArrowRight size={22} />
               </button>

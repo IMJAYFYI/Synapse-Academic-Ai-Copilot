@@ -18,7 +18,7 @@ const getSquareColor = (level) => {
 const BADGE_DICTIONARY = [
   { name: "First Steps", description: "Completed your very first study session!", icon: "🎯" },
   { name: "Night Owl", description: "Studied late into the night (between 9 PM and 4 AM).", icon: "🦉" },
-  { name: "Marathon", description: "Studied for over 60 minutes in one continuous session.", icon: "🏃‍♂️" }
+  { name: "Marathon", description: "Studied for over 120 minutes in a single day.", icon: "🏃‍♂️" }
 ];
 
 export default function Activity() {
@@ -26,6 +26,7 @@ export default function Activity() {
   const [activityMap, setActivityMap] = useState({});
   const [stats, setStats] = useState({ total_minutes: 0, total_days: 0 });
   const [badges, setBadges] = useState([]);
+  const [recentEvents, setRecentEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // 1. Fetch data from the FastAPI backend
@@ -44,6 +45,13 @@ export default function Activity() {
           const badgesRes = await authFetch(`http://localhost:8000/api/badges/${user.id}`);
           if (badgesRes.ok) {
             setBadges(await badgesRes.json());
+          }
+        } catch(e) { console.error(e); }
+        
+        try {
+          const eventsRes = await authFetch(`http://localhost:8000/api/recent-events/${user.id}`);
+          if (eventsRes.ok) {
+            setRecentEvents(await eventsRes.json());
           }
         } catch(e) { console.error(e); }
       } catch (error) {
@@ -168,7 +176,7 @@ export default function Activity() {
       
       {/* Header Section */}
       <div className="mb-10">
-        <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white flex items-center gap-4 transition-colors duration-300 font-outfit">
+        <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white flex items-center gap-4 transition-colors duration-300 font-playfair tracking-tight">
           <div className="bg-indigo-100 dark:bg-indigo-500/20 p-3 rounded-2xl">
             <ActivityIcon className="text-indigo-600 dark:text-indigo-400" size={32} />
           </div>
@@ -179,42 +187,42 @@ export default function Activity() {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div className="bg-white/80 dark:bg-[#1E293B]/80 backdrop-blur-2xl p-6 rounded-[2rem] border border-white/60 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(16,185,129,0.12)] flex items-center gap-5 transition-all duration-300 hover:-translate-y-1">
+        <div className="bg-white dark:bg-[#191919] border border-gray-200 dark:border-[#2C2C2C] p-6 rounded-lg">
           <div className="w-14 h-14 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-500/20 dark:to-teal-500/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-inner">
             <Target size={28} />
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-slate-400 font-medium mb-1">Total Study Time</p>
-            <h3 className="text-3xl font-bold text-gray-900 dark:text-white font-outfit tracking-tight">
+            <h3 className="text-3xl font-bold text-gray-900 dark:text-white font-playfair lining-nums tracking-tight">
               {Math.floor(stats.total_minutes / 60)}h {stats.total_minutes % 60}m
             </h3>
           </div>
         </div>
 
-        <div className="bg-white/80 dark:bg-[#1E293B]/80 backdrop-blur-2xl p-6 rounded-[2rem] border border-white/60 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(249,115,22,0.12)] flex items-center gap-5 transition-all duration-300 hover:-translate-y-1">
+        <div className="bg-white dark:bg-[#191919] border border-gray-200 dark:border-[#2C2C2C] p-6 rounded-lg">
           <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-500/20 dark:to-amber-500/20 rounded-2xl flex items-center justify-center text-orange-600 dark:text-orange-400 shadow-inner">
             <Flame size={28} />
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-slate-400 font-medium mb-1">Current Streak</p>
-            <h3 className="text-3xl font-bold text-gray-900 dark:text-white font-outfit tracking-tight">{currentStreak} days</h3>
+            <h3 className="text-3xl font-bold text-gray-900 dark:text-white font-playfair lining-nums tracking-tight">{currentStreak} days</h3>
           </div>
         </div>
 
-        <div className="bg-white/80 dark:bg-[#1E293B]/80 backdrop-blur-2xl p-6 rounded-[2rem] border border-white/60 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(79,70,229,0.12)] flex items-center gap-5 transition-all duration-300 hover:-translate-y-1">
+        <div className="bg-white dark:bg-[#191919] border border-gray-200 dark:border-[#2C2C2C] p-6 rounded-lg">
           <div className="w-14 h-14 bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-500/20 dark:to-violet-500/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-inner">
             <Trophy size={28} />
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-slate-400 font-medium mb-1">Longest Streak</p>
-            <h3 className="text-3xl font-bold text-gray-900 dark:text-white font-outfit tracking-tight">{maxStreak} days</h3>
+            <h3 className="text-3xl font-bold text-gray-900 dark:text-white font-playfair lining-nums tracking-tight">{maxStreak} days</h3>
           </div>
         </div>
       </div>
 
       {/* Custom Heatmap Section */}
-      <div className="bg-white/80 dark:bg-[#1E293B]/80 backdrop-blur-2xl p-8 rounded-[2rem] border border-white/60 dark:border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-10 transition-colors duration-300">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-2 font-outfit tracking-wide">
+      <div className="bg-white dark:bg-[#191919] border border-gray-200 dark:border-[#2C2C2C] p-8 rounded-lg">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-2 font-playfair tracking-wide">
           Activity in {new Date().getFullYear()}
         </h2>
         
@@ -281,37 +289,64 @@ export default function Activity() {
       </div>
 
       {/* Recent Activity Timeline */}
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 transition-colors duration-300">Recent Activity</h2>
-      <div className="space-y-4">
-        {Object.entries(activityMap)
-          .filter(([_, minutes]) => minutes > 0)
-          .sort((a, b) => new Date(b[0]) - new Date(a[0]))
-          .slice(0, 3)
-          .map(([dateStr, minutes], idx) => {
-            const dateObj = new Date(dateStr);
-            const isToday = new Date().toDateString() === dateObj.toDateString();
-            
-            return (
-              <div key={idx} className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center border-l-4 border-l-emerald-500 hover:shadow-md transition-all duration-300">
-                <div>
-                  <h4 className="font-bold text-gray-900 dark:text-white">Completed Study Session</h4>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    You studied for {Math.floor(minutes / 60) > 0 ? `${Math.floor(minutes / 60)}h ` : ""}{minutes % 60}m
-                  </p>
+      {/* Recent Activity Timeline */}
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mt-12 mb-8 transition-colors duration-300 text-center md:text-left">Recent Activity</h2>
+      
+      <div className="relative">
+        {/* Vertical Center Line */}
+        <div className="absolute left-1/2 transform -translate-x-1/2 w-0.5 h-full bg-gray-200 dark:bg-[#2C2C2C] hidden md:block"></div>
+
+        {recentEvents.length > 0 ? (
+          <div className="space-y-6 md:space-y-8">
+            {recentEvents.map((event, idx) => {
+              const dateObj = new Date(event.timestamp);
+              const isToday = new Date().toDateString() === dateObj.toDateString();
+              const timeString = isToday ? `Today, ${dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+              
+              const isLeft = idx % 2 === 0;
+              
+              let dotColor = "bg-gray-400";
+              if (event.type === "session") dotColor = "bg-emerald-500";
+              else if (event.type === "quiz") dotColor = "bg-indigo-500";
+              else if (event.type === "badge") dotColor = "bg-amber-500";
+              else if (event.type === "upload") dotColor = "bg-violet-500";
+              else if (event.type === "note") dotColor = "bg-cyan-500";
+              
+              return (
+                <div key={idx} className={`relative flex flex-col md:flex-row items-center justify-between w-full ${isLeft ? 'md:flex-row-reverse' : ''}`}>
+                  
+                  {/* Empty Spacer (Desktop) */}
+                  <div className="hidden md:block w-[47%]"></div>
+                  
+                  {/* Center Dot (Desktop) */}
+                  <div className={`absolute left-1/2 transform -translate-x-1/2 w-4 h-4 rounded-full ${dotColor} ring-[6px] ring-gray-50 dark:ring-[#191919] hidden md:block z-10 shadow-sm`}></div>
+
+                  {/* Card Content */}
+                  <div className="w-full md:w-[47%]">
+                    <div className="bg-white dark:bg-[#191919] p-5 rounded-2xl border border-gray-200 dark:border-[#2C2C2C] shadow-sm flex flex-col sm:flex-row justify-between sm:items-center transition-all duration-300 hover:shadow-md hover:border-indigo-500/30 group">
+                      <div>
+                        <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                          <span className="md:hidden text-lg">{event.icon}</span>
+                          {event.title}
+                        </h4>
+                        <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{event.subtitle}</p>
+                      </div>
+                      <span className="text-xs text-gray-400 font-medium whitespace-nowrap mt-3 sm:mt-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                        {timeString}
+                      </span>
+                    </div>
+                  </div>
+                  
                 </div>
-                <span className="text-xs text-gray-400 font-medium">
-                  {isToday ? "Today" : dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-              </div>
-            );
-          })}
-          
-          {Object.keys(activityMap).length === 0 && (
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm flex justify-center items-center text-gray-500 dark:text-gray-400">
-              No recent activity yet. Start studying to build your streak!
-            </div>
-          )}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-[#191919] p-5 rounded-2xl border border-gray-200 dark:border-[#2C2C2C] shadow-sm flex justify-center items-center text-gray-500 dark:text-gray-400">
+            No recent activity yet. Start studying to build your timeline!
+          </div>
+        )}
+      </div>
 
       {/* Badge Dictionary */}
       <div className="mt-8">

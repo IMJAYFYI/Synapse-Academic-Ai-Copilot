@@ -1,0 +1,18 @@
+# Environments
+node_modules/
+backend/myenv/
+frontend/dist/
+
+# Database and AI Storage (Do not push user data!)
+backend/synapse.db
+backend/.chroma_db/
+
+# Secrets (CRITICAL: Never push API keys!)
+backend/.env
+
+# Python Cache
+backend/__pycache__/
+*.pyc
+
+# Logs
+*.log

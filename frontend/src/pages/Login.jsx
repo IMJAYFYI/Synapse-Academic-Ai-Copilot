@@ -82,7 +82,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-[#F9F8F6] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Background Orbs */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
         <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[120px]" />
@@ -90,12 +90,12 @@ export default function Login() {
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <Link to="/" className="flex justify-center items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer mb-4">
-          <div className="bg-gradient-to-br from-indigo-500 to-violet-600 p-2.5 rounded-2xl shadow-md">
-            <BrainCircuit className="text-white" size={32} />
+        <Link to="/" className="flex justify-center items-center gap-3 group hover:opacity-80 transition-opacity cursor-pointer mb-4">
+          <div className="text-emerald-700 transition-opacity">
+            <BrainCircuit size={36} />
           </div>
-          <span className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 font-outfit tracking-tight">
-            Synapse
+          <span className="text-4xl font-extrabold text-gray-900 font-playfair tracking-tight">
+            Synapse.
           </span>
         </Link>
         <p className="mt-2 text-center text-base text-gray-500 font-medium">
@@ -104,7 +104,7 @@ export default function Login() {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="bg-white/80 backdrop-blur-2xl py-10 px-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:rounded-[2rem] sm:px-10 border border-white/60">
+        <div className="bg-white border border-gray-200 p-8 rounded-2xl shadow-sm">
           <form className="space-y-6" onSubmit={handleSubmit}>
             
             {!isLoginMode && (
@@ -158,7 +158,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-[0_8px_30px_rgb(79,70,229,0.2)] text-base font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-all transform hover:-translate-y-0.5"
+                className="w-full flex justify-center py-3.5 px-4 rounded-lg text-base font-bold bg-gray-100 text-gray-800 border border-gray-200 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 disabled:opacity-50 transition-all"
               >
                 {isLoading ? <Loader2 className="animate-spin" size={24} /> : (isLoginMode ? 'Sign In' : 'Sign Up')}
               </button>
@@ -202,7 +202,7 @@ export default function Login() {
                   setIsLoginMode(!isLoginMode);
                   setError('');
                 }}
-                className="font-medium text-indigo-600 hover:text-indigo-500 text-sm"
+                className="font-medium text-gray-900 hover:underline text-sm"
               >
                 {isLoginMode ? 'Create one now' : 'Sign in instead'}
               </button>

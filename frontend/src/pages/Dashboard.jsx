@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, TrendingUp, Book, Loader2 } from "lucide-react";
+import { Clock, TrendingUp, Book, Loader2, Play, Lock } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useStudyContext } from "../context/StudyContext";
 
@@ -111,8 +111,8 @@ export default function Dashboard() {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4 relative z-10">
         <div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 text-gray-900 dark:text-white transition-colors duration-300 font-outfit">
-            Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-emerald-400 drop-shadow-sm">{stats.user_name}</span>!
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 text-gray-900 dark:text-white transition-colors duration-300 font-playfair">
+            {stats.last_studied_topic ? "Welcome back" : "Welcome"}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-emerald-400 drop-shadow-sm">{stats.user_name}</span>!
           </h1>
           <p className="text-lg text-gray-500 dark:text-slate-400 font-medium transition-colors duration-300">
             Your AI coach has optimized your learning path for <span className="text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 rounded-full">{user?.main_goal || "your exams"}</span>.
@@ -122,23 +122,23 @@ export default function Dashboard() {
           onClick={() =>
             navigate("/session", { state: { selectedTopic: stats.last_studied_topic }, replace: true })
           }
-          className="px-8 py-4 text-base font-bold bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-500 dark:to-violet-500 text-white rounded-full hover:opacity-90 shadow-[0_8px_30px_rgb(79,70,229,0.3)] dark:shadow-[0_8px_30px_rgb(79,70,229,0.5)] transition-all transform hover:-translate-y-1 flex items-center gap-3"
+          className="px-8 py-4 text-base font-bold bg-gray-100 text-gray-800 dark:bg-[#2C2C2C] dark:text-gray-200 border border-gray-200 dark:border-[#3C3C3C] rounded-lg hover:bg-gray-200 dark:hover:bg-[#333] transition-all flex items-center gap-3"
         >
-          ▶ {stats.last_studied_topic ? `Continue "${stats.last_studied_topic}"` : "Start Studying"}
+          <Play fill="currentColor" size={20} className="text-emerald-600 dark:text-emerald-400" /> {stats.last_studied_topic ? `Continue "${stats.last_studied_topic}"` : "Start Studying"}
         </button>
       </div>
 
       {/* Stats Cards Grid - Glassmorphism */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 shrink-0 relative z-10">
         {/* Card 1 - Study Time */}
-        <div className="bg-white/80 dark:bg-[#1E293B]/80 backdrop-blur-2xl border border-white/60 dark:border-slate-700/50 p-6 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(79,70,229,0.12)] transition-all duration-300 hover:-translate-y-1">
+        <div className="bg-white dark:bg-[#191919] border border-gray-200 dark:border-[#2C2C2C] p-6 rounded-lg">
           <div className="flex items-center gap-5">
             <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-500/20 dark:to-indigo-500/20 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-inner">
               <Clock size={28} />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-slate-400 font-medium mb-1">Study Time Today</p>
-              <h3 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight font-outfit">
+              <h3 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight font-playfair lining-nums">
                 {formatMinutes(stats.study_time_today_minutes || 0)}
               </h3>
             </div>
@@ -146,7 +146,7 @@ export default function Dashboard() {
         </div>
 
         {/* Card 2 - Streak */}
-        <div className="bg-white/80 dark:bg-[#1E293B]/80 backdrop-blur-2xl border border-white/60 dark:border-slate-700/50 p-6 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(16,185,129,0.12)] transition-all duration-300 hover:-translate-y-1">
+        <div className="bg-white dark:bg-[#191919] border border-gray-200 dark:border-[#2C2C2C] p-6 rounded-lg">
           <div className="flex items-center gap-5">
             <div className="w-14 h-14 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-500/20 dark:to-teal-500/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-inner">
               <TrendingUp size={28} />
@@ -154,7 +154,7 @@ export default function Dashboard() {
             <div>
               <p className="text-sm text-gray-500 dark:text-slate-400 font-medium mb-1">Current Streak</p>
               <div className="flex items-end gap-3">
-                <h3 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight font-outfit">{stats.current_streak || 0}</h3>
+                <h3 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight font-playfair lining-nums">{stats.current_streak || 0}</h3>
                 <span className="text-sm font-medium text-emerald-500 mb-1 tracking-wide">DAYS</span>
               </div>
             </div>
@@ -162,14 +162,14 @@ export default function Dashboard() {
         </div>
 
         {/* Card 3 - Topics */}
-        <div className="bg-white/80 dark:bg-[#1E293B]/80 backdrop-blur-2xl border border-white/60 dark:border-slate-700/50 p-6 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(249,115,22,0.12)] transition-all duration-300 hover:-translate-y-1">
+        <div className="bg-white dark:bg-[#191919] border border-gray-200 dark:border-[#2C2C2C] p-6 rounded-lg">
           <div className="flex items-center gap-5">
             <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-500/20 dark:to-amber-500/20 rounded-2xl flex items-center justify-center text-orange-600 dark:text-orange-400 shadow-inner">
               <Book size={28} />
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-slate-400 font-medium mb-1">Topics Covered</p>
-              <h3 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight font-outfit">{stats.topics_covered || 0}</h3>
+              <h3 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight font-playfair lining-nums">{stats.topics_covered || 0}</h3>
             </div>
           </div>
         </div>
@@ -177,9 +177,9 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10">
         {/* Chart Section */}
-        <div className="lg:col-span-2 bg-white/80 dark:bg-[#1E293B]/80 backdrop-blur-2xl border border-white/60 dark:border-slate-700/50 p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors duration-300">
+        <div className="lg:col-span-2 bg-white dark:bg-[#191919] border border-gray-200 dark:border-[#2C2C2C] p-8 rounded-lg">
           <div className="flex justify-between items-center mb-8">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white font-outfit tracking-wide">Study Hours Progress</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white font-playfair tracking-wide">Study Hours Progress</h2>
             <select 
               value={timeframe}
               onChange={(e) => setTimeframe(e.target.value)}
@@ -209,9 +209,9 @@ export default function Dashboard() {
         </div>
 
         {/* Achievements Section */}
-        <div className="bg-white/80 dark:bg-[#1E293B]/80 backdrop-blur-2xl border border-white/60 dark:border-slate-700/50 p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-colors duration-300">
+        <div className="bg-white dark:bg-[#191919] border border-gray-200 dark:border-[#2C2C2C] p-8 rounded-lg">
           <div className="mb-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white font-outfit tracking-wide">Achievements</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white font-playfair tracking-wide">Achievements</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Your unlocked badges</p>
           </div>
           <div className="space-y-4">
@@ -230,7 +230,7 @@ export default function Dashboard() {
             ) : (
               <div className="text-center py-10 bg-white/20 dark:bg-black/10 rounded-2xl border border-dashed border-gray-300 dark:border-white/10">
                 <div className="w-16 h-16 bg-white/50 dark:bg-white/5 rounded-2xl flex items-center justify-center text-gray-400 dark:text-gray-500 mx-auto mb-4 shadow-sm border border-white/60 dark:border-white/5">
-                  <span className="text-2xl">🔒</span>
+                  <Lock size={28} />
                 </div>
                 <p className="text-sm font-bold text-gray-900 dark:text-gray-300">No badges yet</p>
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-500 mt-1.5 px-4">Start a study session to earn your first badge!</p>
