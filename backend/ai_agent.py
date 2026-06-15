@@ -8,10 +8,6 @@ from typing import List
 
 load_dotenv()
 
-# Fallback to the new key if not explicitly set in the cloud dashboard
-if not os.getenv("GEMINI_API_KEY"):
-    os.environ["GEMINI_API_KEY"] = "AIzaSyBlrrCQ8lgTMvgAoSZdynSbwIGdBqy_Ic8"
-
 # --- MACRO EXTRACTION LOGIC (Upload Phase) ---
 
 class Topic(BaseModel):
