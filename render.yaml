@@ -20,8 +20,9 @@ services:
         value: "*"
 
   # 2. The Cloud Frontend React App
-  - type: static-site
+  - type: web
     name: synapse-frontend
+    env: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
     envVars:
