@@ -299,7 +299,9 @@ export default function Activity() {
         {recentEvents.length > 0 ? (
           <div className="space-y-6 md:space-y-8">
             {recentEvents.map((event, idx) => {
-              const dateObj = new Date(event.timestamp);
+              // Ensure the timestamp is parsed as UTC by appending 'Z' if missing
+              const timestampStr = event.timestamp.endsWith('Z') ? event.timestamp : event.timestamp + 'Z';
+              const dateObj = new Date(timestampStr);
               const isToday = new Date().toDateString() === dateObj.toDateString();
               const timeString = isToday ? `Today, ${dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
               
