@@ -27,10 +27,7 @@ services:
     staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: synapse-backend
-          property: url
+        sync: false
 
 # 3. The Cloud PostgreSQL Database
 databases:
