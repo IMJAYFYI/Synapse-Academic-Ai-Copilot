@@ -790,7 +790,7 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
 @app.post("/api/auth/google")
 async def google_auth(request: GoogleLoginRequest, db: Session = Depends(get_db)):
     try:
-        CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "123456789-placeholder.apps.googleusercontent.com")
+        CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "651610918391-i4nppl1jnh5lcplcl0i6npb2s58iqhau.apps.googleusercontent.com")
         idinfo = id_token.verify_oauth2_token(request.credential, google_requests.Request(), CLIENT_ID)
         
         email = idinfo['email']
