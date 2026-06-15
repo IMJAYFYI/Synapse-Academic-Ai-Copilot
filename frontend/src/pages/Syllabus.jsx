@@ -39,7 +39,12 @@ export default function Syllabus() {
       });
 
       if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
+        let errorMsg = `Server error: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.detail || errorMsg;
+        } catch (e) {}
+        throw new Error(errorMsg);
       }
 
       // 3. Parse the JSON response ONCE
@@ -54,7 +59,14 @@ export default function Syllabus() {
       
     } catch (error) {
       console.error("Upload failed:", error);
-      alert("Failed to process syllabus. Ensure backend server is running.");
+      const errLower = error.message.toLowerCase();
+      if (errLower.includes("api_key") || errLower.includes("api key") || errLower.includes("permission denied") || errLower.includes("403")) {
+        alert("Your Google Gemini API Key is missing or expired! Please update it in the Render Dashboard.");
+      } else if (errLower.includes("quota") || errLower.includes("exhausted") || errLower.includes("429") || errLower.includes("too many requests")) {
+        alert("Token Exhaustion! Your Gemini API key has run out of its free quota. Please use a different Google account to generate a new API key.");
+      } else {
+        alert("Failed to process syllabus: " + error.message);
+      }
     } finally {
       setIsProcessing(false);
     }
