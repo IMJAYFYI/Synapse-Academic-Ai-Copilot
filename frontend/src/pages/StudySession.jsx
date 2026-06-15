@@ -24,6 +24,8 @@ function StudySessionContent() {
   useEffect(() => {
     if (location.state?.selectedTopic) {
       setGlobalActiveTopic(location.state.selectedTopic);
+      // Clear the state so a page refresh doesn't force the old topic again
+      window.history.replaceState({}, document.title);
     }
   }, [location.state?.selectedTopic, setGlobalActiveTopic]);
 

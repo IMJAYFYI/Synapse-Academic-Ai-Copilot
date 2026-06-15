@@ -1,0 +1,78 @@
+<html><body><h1>Synopsis: AI Academic Study Copilot &amp; Coach (Updated Final Version)</h1>
+<h2>1. INTRODUCTION</h2>
+<h3>Purpose</h3>
+<p>This document outlines the complete software requirements and final implementation details for the AI Academic Study Copilot. The application is a full-stack, intelligent study assistant designed to manage learning schedules, quantify study effort, generate interactive materials, and provide context-aware AI tutoring.</p>
+<h3>Scope</h3>
+<p>The system provides a centralized dashboard for tracking quantitative study metrics, a dedicated split-pane learning environment with an integrated Pomodoro timer, an AI chat interface grounded in user-specific notes, a syllabus parsing engine, and an advanced gamified activity tracker. The scope encompasses the frontend Single Page Application (SPA), the backend API architecture, the relational database structure, and the AI/RAG (Retrieval-Augmented Generation) pipeline necessary to power the dynamic features.</p>
+<h2>2. OVERALL DESCRIPTION</h2>
+<h3>Product Perspective</h3>
+<p>The platform operates on a modern decoupled architecture. The frontend is a responsive React SPA utilizing advanced UI paradigms (custom layout panels, interactive SVG heatmaps, and Recharts). The backend operates via a high-performance Python/FastAPI server, managing state persistence in a PostgreSQL database, while a local embedded vector database (ChromaDB) manages the semantic retrieval required for the AI coach's context awareness.</p>
+<h3>Target Audience</h3>
+<ul>
+<li><strong>Students:</strong> Managing structured university courses, processing dense syllabi, and preparing for examinations through AI-generated quizzes.</li>
+<li><strong>Self-Learners:</strong> Tracking independent study hours, maintaining learning streaks, earning achievement badges, and utilizing on-demand AI tutoring for complex subjects.</li>
+</ul>
+<h2>3. FUNCTIONAL REQUIREMENTS</h2>
+<h3>Authentication &amp; User Management</h3>
+<ul>
+<li><strong>System Access:</strong> Users securely register and log in using email/password (secured via Bcrypt hashing algorithms) or OAuth providers (Google). </li>
+<li><strong>Profile State:</strong> The PostgreSQL backend maintains user profiles, linking them securely to their uploaded syllabi, generated notes, quiz scores, and historical study data via stateless JWT session tokens stored in browser <code>sessionStorage</code>.</li>
+</ul>
+<h3>Dashboard &amp; Quantitative Analytics</h3>
+<ul>
+<li><strong>Quick Start Protocol:</strong> The dashboard features a primary call to action that fetches the user's last active session from the backend and instantly loads the corresponding module.</li>
+<li><strong>Real-Time Metrics:</strong> Displays "Study Time Today," "Current Streak," and "Topics Covered."</li>
+<li><strong>Study Hours Progress Chart:</strong> A graphical Recharts bar chart tracking exact hours studied.</li>
+<li><strong>Backend Logic:</strong> The system records time exclusively based on quantifiable effort (completed Pomodoro intervals or logged active hours). Data is aggregated synchronously via complex PostgreSQL <code>func.sum()</code> queries.</li>
+</ul>
+<h3>Dynamic Study Session Environment</h3>
+<ul>
+<li><strong>Split Layout:</strong> The frontend divides the workspace between study materials (left) and the AI coach (right).</li>
+<li><strong>Integrated Pomodoro Timer:</strong> State management for Work (25 min), Short Break (5 min), and Long Break (15 min) modes. Syncing requires completed work intervals to send a payload to the backend to update daily study hours.</li>
+<li><strong>Left Panel (Study Materials):</strong> Interactive multiple-choice Quizzes provide dynamic assessments rendered from structured JSON payloads.</li>
+<li><strong>Right Panel (AI Study Coach):</strong> A persistent, real-time chat interface. The UI utilizes <code>react-markdown</code> and <code>remark-gfm</code> Abstract Syntax Tree (AST) parsers to render streaming Server-Sent Events (SSE) from the AI in real-time, displaying complex math equations and code blocks smoothly. </li>
+<li><strong>Context Awareness:</strong> Every message sent to the AI bundles metadata about the active topic. The backend RAG pipeline injects this specific context into the Gemini prompt to ensure highly relevant, localized tutoring without hallucination.</li>
+</ul>
+<h3>Syllabus Management &amp; Ingestion Pipeline</h3>
+<ul>
+<li><strong>Upload Pipeline:</strong> The UI accepts PDF files via a dedicated dropzone. </li>
+<li><strong>Processing Engine:</strong> The backend extracts raw text from the uploaded document. A LangChain orchestration pipeline utilizes Google Gemini 2.5 Flash to structure the raw text into a hierarchical JSON format (Units, Topics). The structured outline is saved to the PostgreSQL database and populates the user's course navigation menu.</li>
+</ul>
+<h3>Contribution &amp; Gamification Engine</h3>
+<ul>
+<li><strong>Activity Heat Map:</strong> A 365-day SVG contribution matrix (similar to GitHub) visualizing daily study intensity. The backend API returns an array of date-value pairs representing study duration.</li>
+<li><strong>Streak &amp; Badge Calculation:</strong> The database evaluates consecutive days where Study_Hours &gt; 0 to update the user's "Current Streak." Additionally, completing topics and maintaining streaks unlocks specific Achievement Badges within the PostgreSQL database to further incentivize learning.</li>
+</ul>
+<h2>4. NON-FUNCTIONAL REQUIREMENTS</h2>
+<h3>UI/UX &amp; Theming</h3>
+<ul>
+<li><strong>Theme Support:</strong> Strict UI components driven by Tailwind CSS styling constraints.</li>
+<li><strong>Responsive Degradation:</strong> The layout collapses gracefully into a stacked single-column view on mobile devices, and non-essential UI elements are hidden on narrow viewports.</li>
+</ul>
+<h3>System Performance &amp; Scalability</h3>
+<ul>
+<li><strong>Timer Precision:</strong> The Pomodoro timer relies on absolute system clock timestamps (<code>Date.now()</code>) rather than pure interval ticks to prevent browser-throttling drift.</li>
+<li><strong>API Latency:</strong> Standard CRUD operations and analytics retrieval resolve in under 200ms.</li>
+<li><strong>Streaming Responses:</strong> The AI Coach chat interface utilizes Server-Sent Events (SSE) via Python <code>yield</code> generators to stream text responses chunk-by-chunk over HTTP, ensuring immediate visual feedback.</li>
+</ul>
+<h3>Security &amp; Data Integrity</h3>
+<ul>
+<li><strong>Payload Validation:</strong> All incoming API requests are strictly validated against predefined Pydantic schemas to prevent injection attacks and server crashes.</li>
+<li><strong>Data Isolation:</strong> Database queries enforce tenant isolation via JWT payload extraction, ensuring users can only access their own uploaded syllabi and notes.</li>
+</ul>
+<h2>5. TECHNOLOGY STACK</h2>
+<h3>Frontend Architecture</h3>
+<ul>
+<li><strong>Core Framework:</strong> React 18+</li>
+<li><strong>Routing:</strong> React Router</li>
+<li><strong>Styling:</strong> Tailwind CSS</li>
+<li><strong>Icons:</strong> Lucide React</li>
+<li><strong>Complex UI State:</strong> Global React Context API linked to Browser <code>sessionStorage</code></li>
+</ul>
+<h3>Backend &amp; Data Architecture</h3>
+<ul>
+<li><strong>Core Framework:</strong> Python with FastAPI (for high-performance, asynchronous endpoints via Uvicorn).</li>
+<li><strong>Primary Database:</strong> PostgreSQL (managed via SQLAlchemy ORM for relational data, users, badges, and quizzes).</li>
+<li><strong>Vector Database:</strong> ChromaDB (embedded local SQLite implementation for storing and querying text embeddings of uploaded syllabi).</li>
+<li><strong>AI Orchestration:</strong> Pure LangChain (utilizing <code>GoogleGenerativeAI</code> models <code>gemini-2.5-flash</code> and <code>text-embedding-004</code>). <em>Note: LangGraph was explicitly excluded to reduce orchestration overhead and meet API latency requirements.</em></li>
+</ul></body></html>

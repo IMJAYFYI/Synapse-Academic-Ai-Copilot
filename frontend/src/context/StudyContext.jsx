@@ -46,10 +46,19 @@ export function StudyProvider({ children }) {
   const [globalSystemMessage, setGlobalSystemMessage] = useState(null);
 
   // --- GLOBAL TIMER STATE ---
-  const [timerMode, setTimerMode] = useState("work");
-  const [timerTimeLeft, setTimerTimeLeft] = useState(TIMER_DURATIONS.work);
-  const [timerIsRunning, setTimerIsRunning] = useState(false);
+  const [timerMode, setTimerMode] = useState(() => sessionStorage.getItem('synapse_timer_mode') || "work");
+  const [timerTimeLeft, setTimerTimeLeft] = useState(() => {
+    const savedTimeLeft = sessionStorage.getItem('synapse_timer_timeleft');
+    return savedTimeLeft !== null ? parseInt(savedTimeLeft, 10) : TIMER_DURATIONS.work;
+  });
+  const [timerIsRunning, setTimerIsRunning] = useState(false); // Automatically pause on refresh to prevent audio/database bugs during load
   const expectedEndTimeRef = useRef(null);
+
+  // Automatically save the timer state to browser session memory
+  useEffect(() => {
+    sessionStorage.setItem('synapse_timer_mode', timerMode);
+    sessionStorage.setItem('synapse_timer_timeleft', timerTimeLeft.toString());
+  }, [timerMode, timerTimeLeft]);
   const intervalRef = useRef(null);
   const audioCtxRef = useRef(null);
   

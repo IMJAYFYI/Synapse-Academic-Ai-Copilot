@@ -139,6 +139,7 @@ def chat_with_coach_stream(user_message: str, chat_history: list, active_topic: 
     
     # RAG Retrieval
     embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=os.getenv("GEMINI_API_KEY"))
+    
     vectorstore = Chroma(persist_directory="./.chroma_db", embedding_function=embeddings)
     
     # Try to retrieve context based on the topic and message
