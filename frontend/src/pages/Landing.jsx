@@ -84,7 +84,7 @@ export default function Landing() {
             onClick={() => setShowTechPanel(true)}
             className="px-5 py-2 text-sm font-bold bg-white border border-gray-200 text-gray-900 rounded-full hover:bg-gray-50 transition-all flex items-center gap-2 shadow-sm"
           >
-            <Layers size={16} className="text-indigo-600" />
+            <Layers size={16} className="text-emerald-600" />
             How it Works
           </button>
         </div>
@@ -175,7 +175,7 @@ export default function Landing() {
             <div className="p-8">
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-extrabold text-gray-900 font-playfair flex items-center gap-2">
-                  <BrainCircuit className="text-indigo-600" size={28} />
+                  <BrainCircuit className="text-emerald-600" size={28} />
                   Synapse Architecture
                 </h2>
                 <button 
