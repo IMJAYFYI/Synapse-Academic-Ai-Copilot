@@ -247,11 +247,11 @@ export default function Landing() {
                     </div>
                     <div>
                       <h3 className="font-bold text-gray-900">AI & Vector Search</h3>
-                      <p className="text-xs text-violet-600 font-bold uppercase tracking-wider">Google Gemini 1.5 + ChromaDB</p>
+                      <p className="text-xs text-violet-600 font-bold uppercase tracking-wider">Google Gemini 2.5 + ChromaDB</p>
                     </div>
                   </div>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    Powered by Google's Gemini 1.5 Flash via LangChain. Syllabuses are chunked, converted to Text Embeddings (text-embedding-004), and stored in an embedded <span className="font-semibold text-gray-900">ChromaDB</span> vector database running directly inside the FastAPI server for sub-millisecond semantic search retrieval (RAG).
+                    Powered by Google's Gemini 2.5 Flash via LangChain. Syllabuses are chunked, converted to Text Embeddings (text-embedding-004), and stored in an embedded <span className="font-semibold text-gray-900">ChromaDB</span> vector database running directly inside the FastAPI server for sub-millisecond semantic search retrieval (RAG).
                   </p>
                 </div>
               </div>
