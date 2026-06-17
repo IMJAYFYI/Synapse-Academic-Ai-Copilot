@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { BrainCircuit, BookOpen, Target, Activity, ArrowRight, Zap, Sparkles } from "lucide-react";
+import { BrainCircuit, BookOpen, Target, Activity, ArrowRight, Zap, Sparkles, X, Layers, Database, Cpu, Code } from "lucide-react";
 
 export default function Landing() {
   const navigate = useNavigate();
   const [featureIndex, setFeatureIndex] = useState(0);
+  const [showTechPanel, setShowTechPanel] = useState(false);
   
   const features = [
     "Turn any Syllabus into a Study Plan",
@@ -80,10 +81,11 @@ export default function Landing() {
             Log In
           </button>
           <button 
-            onClick={() => navigate('/onboarding')}
-            className="px-5 py-2 text-sm font-bold bg-white border border-gray-200 text-gray-900 rounded-full hover:bg-gray-50 transition-all flex items-center gap-2"
+            onClick={() => setShowTechPanel(true)}
+            className="px-5 py-2 text-sm font-bold bg-white border border-gray-200 text-gray-900 rounded-full hover:bg-gray-50 transition-all flex items-center gap-2 shadow-sm"
           >
-            Start Free <ArrowRight size={16} />
+            <Layers size={16} className="text-indigo-600" />
+            How it Works
           </button>
         </div>
       </nav>
@@ -159,6 +161,114 @@ export default function Landing() {
           </div>
         </div>
       </section>
+      {/* How It Works - Tech Stack Side Panel */}
+      {showTechPanel && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity animate-[fadeIn_0.3s_ease-out]"
+            onClick={() => setShowTechPanel(false)}
+          ></div>
+          
+          {/* Panel */}
+          <div className="relative w-full max-w-md h-full bg-white shadow-2xl overflow-y-auto animate-[slideInRight_0.4s_ease-out]">
+            <div className="p-8">
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-extrabold text-gray-900 font-playfair flex items-center gap-2">
+                  <BrainCircuit className="text-indigo-600" size={28} />
+                  Synapse Architecture
+                </h2>
+                <button 
+                  onClick={() => setShowTechPanel(false)}
+                  className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-500 mb-8 font-medium leading-relaxed">
+                Synapse is a modern, full-stack AI web application. Below is the verified technology stack driving the platform.
+              </p>
+
+              <div className="space-y-6">
+                {/* Frontend */}
+                <div className="border border-gray-100 p-5 rounded-2xl bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                      <Code size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">Frontend (Client)</h3>
+                      <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">React 19 + Vite + Tailwind CSS</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    A lightning-fast Single Page Application (SPA) built with the latest React 19 and Vite 8. Styled purely with Tailwind CSS for dynamic glassmorphism and fully responsive layouts. Uses React Context for global state management and React Router v7 for seamless client-side navigation.
+                  </p>
+                </div>
+
+                {/* Backend */}
+                <div className="border border-gray-100 p-5 rounded-2xl bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
+                      <Cpu size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">Backend (Server)</h3>
+                      <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider">Python + FastAPI</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    A high-performance asynchronous REST API built with FastAPI. It handles JWT-based user authentication, PDF file processing, and orchestrates the AI logic securely on the server.
+                  </p>
+                </div>
+
+                {/* Database */}
+                <div className="border border-gray-100 p-5 rounded-2xl bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
+                      <Database size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">Primary Database</h3>
+                      <p className="text-xs text-orange-600 font-bold uppercase tracking-wider">PostgreSQL + SQLAlchemy</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    A robust relational cloud database running on Render. It stores user accounts, hashed passwords, OAuth credentials, daily study streaks, and tracks badge unlocks using SQLAlchemy ORM models.
+                  </p>
+                </div>
+
+                {/* AI & Vector */}
+                <div className="border border-gray-100 p-5 rounded-2xl bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600">
+                      <Sparkles size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900">AI & Vector Search</h3>
+                      <p className="text-xs text-violet-600 font-bold uppercase tracking-wider">Google Gemini 1.5 + ChromaDB</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Powered by Google's Gemini 1.5 Flash via LangChain. Syllabuses are chunked, converted to Text Embeddings (text-embedding-004), and stored in an embedded <span className="font-semibold text-gray-900">ChromaDB</span> vector database running directly inside the FastAPI server for sub-millisecond semantic search retrieval (RAG).
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-8 text-center">
+                <button 
+                  onClick={() => setShowTechPanel(false)}
+                  className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
+                >
+                  Close Panel
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
