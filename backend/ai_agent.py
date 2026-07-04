@@ -8,6 +8,10 @@ from typing import List
 
 load_dotenv()
 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise RuntimeError("GEMINI_API_KEY environment variable is required")
+
 # --- MACRO EXTRACTION LOGIC (Upload Phase) ---
 
 class Topic(BaseModel):
@@ -22,7 +26,7 @@ def analyze_syllabus(raw_text: str) -> str:
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash", 
         temperature=0,
-        google_api_key=os.getenv("GEMINI_API_KEY")
+        google_api_key=GEMINI_API_KEY
     )
 
     structured_llm = llm.with_structured_output(SyllabusAnalysis)
@@ -57,7 +61,7 @@ def extract_subject_details(raw_text: str, subject_name: str) -> str:
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash", 
         temperature=0.1,
-        google_api_key=os.getenv("GEMINI_API_KEY")
+        google_api_key=GEMINI_API_KEY
     )
 
     structured_llm = llm.with_structured_output(SubjectDetails)
@@ -81,7 +85,7 @@ def chat_with_coach(user_message: str, chat_history: list, active_topic: str) ->
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash", # Using your confirmed active model
         temperature=0.5, # Slightly higher temperature for conversational flexibility
-        google_api_key=os.getenv("GEMINI_API_KEY")
+        google_api_key=GEMINI_API_KEY
     )
 
     # 1. Initialize the context window with a strict System Prompt
@@ -134,11 +138,11 @@ def chat_with_coach_stream(user_message: str, chat_history: list, active_topic: 
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash", 
         temperature=0.3, 
-        google_api_key=os.getenv("GEMINI_API_KEY")
+        google_api_key=GEMINI_API_KEY
     )
     
     # RAG Retrieval
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=os.getenv("GEMINI_API_KEY"))
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=GEMINI_API_KEY)
     
     vectorstore = Chroma(persist_directory="./.chroma_db", embedding_function=embeddings)
     

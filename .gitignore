@@ -5,10 +5,21 @@ frontend/dist/
 
 # Database and AI Storage (Do not push user data!)
 backend/synapse.db
+backend/*.db
+backend/**/*.db
 backend/.chroma_db/
+backend/backend/
 
 # Secrets (CRITICAL: Never push API keys!)
 backend/.env
+.env
+.env.*
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+frontend/.env.production
+frontend/.env.local
+frontend/.env.*.local
 
 # Python Cache
 backend/__pycache__/
@@ -16,3 +27,61 @@ backend/__pycache__/
 
 # Logs
 *.log
+
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env*.txt
+
+# Secrets and credentials
+config.json
+secrets.json
+*.pem
+*.key
+*.private
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+.npm
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+.env.bak
+
+# Build outputs
+dist/
+build/
+.next/
+.nuxt/
+out/
+.cache/
+
+# Logs
+*.log
+logs/
+
+# OS temp files
+*.tmp
+*.temp
+EOF
